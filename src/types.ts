@@ -17,18 +17,18 @@ export interface SessionInfo {
 }
 
 export type CreateMode =
-  | { kind: 'new' }
-  | { kind: 'continue' }
-  | { kind: 'resume'; conversationId: string };
+  | { kind: "new" }
+  | { kind: "continue" }
+  | { kind: "resume"; conversationId: string };
 
 export type ClientMessage =
-  | { type: 'list' }
-  | { type: 'create'; cwd: string; cols: number; rows: number; mode?: CreateMode }
-  | { type: 'join'; sessionId: string; cols: number; rows: number }
-  | { type: 'detach'; sessionId: string }
-  | { type: 'input'; sessionId: string; data: string }
-  | { type: 'resize'; sessionId: string; cols: number; rows: number }
-  | { type: 'kill'; sessionId: string };
+  | { type: "list" }
+  | { type: "create"; cwd: string; cols: number; rows: number; mode?: CreateMode }
+  | { type: "join"; sessionId: string; cols: number; rows: number }
+  | { type: "detach"; sessionId: string }
+  | { type: "input"; sessionId: string; data: string }
+  | { type: "resize"; sessionId: string; cols: number; rows: number }
+  | { type: "kill"; sessionId: string };
 
 export interface PastSessionInfo {
   id: string;
@@ -38,9 +38,9 @@ export interface PastSessionInfo {
 }
 
 export type ServerMessage =
-  | { type: 'sessions'; sessions: SessionInfo[] }
-  | { type: 'created'; session: SessionInfo }
-  | { type: 'attached'; sessionId: string; replay: string }
-  | { type: 'output'; sessionId: string; data: string }
-  | { type: 'ended'; sessionId: string; exitCode: number }
-  | { type: 'error'; message: string };
+  | { type: "sessions"; sessions: SessionInfo[] }
+  | { type: "created"; session: SessionInfo }
+  | { type: "attached"; sessionId: string; replay: string }
+  | { type: "output"; sessionId: string; data: string }
+  | { type: "ended"; sessionId: string; exitCode: number }
+  | { type: "error"; message: string };

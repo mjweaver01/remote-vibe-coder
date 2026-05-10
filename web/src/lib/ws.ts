@@ -2,14 +2,10 @@
 // pub/sub API for components, and tracks the live session list pushed by the
 // server.
 
-import type {
-  ClientMessage,
-  ServerMessage,
-  SessionInfo,
-} from '../../../src/types.ts';
-import { wsUrl } from './auth.ts';
+import type { ClientMessage, ServerMessage, SessionInfo } from "../../../src/types.ts";
+import { wsUrl } from "./auth.ts";
 
-export type WsStatus = 'connecting' | 'open' | 'reconnecting' | 'closed';
+export type WsStatus = "connecting" | "open" | "reconnecting" | "closed";
 
 type Listener<T> = (value: T) => void;
 type MessageListener = Listener<ServerMessage>;
@@ -19,7 +15,7 @@ const MAX_RETRY_MS = 8_000;
 
 export class WsClient {
   private socket: WebSocket | null = null;
-  private status: WsStatus = 'closed';
+  private status: WsStatus = "closed";
   private retryDelay = MIN_RETRY_MS;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
@@ -46,7 +42,7 @@ export class WsClient {
       } catch {}
       this.socket = null;
     }
-    this.setStatus('closed');
+    this.setStatus("closed");
   }
 
   send(msg: ClientMessage) {
@@ -85,30 +81,30 @@ export class WsClient {
 
   private connect() {
     if (this.destroyed) return;
-    this.setStatus(this.socket ? 'reconnecting' : 'connecting');
+    this.setStatus(this.socket ? "reconnecting" : "connecting");
 
     let socket: WebSocket;
     try {
-      socket = new WebSocket(wsUrl('/ws'));
+      socket = new WebSocket(wsUrl("/ws"));
     } catch {
       this.scheduleReconnect();
       return;
     }
     this.socket = socket;
 
-    socket.addEventListener('open', () => {
+    socket.addEventListener("open", () => {
       this.retryDelay = MIN_RETRY_MS;
-      this.setStatus('open');
+      this.setStatus("open");
     });
 
-    socket.addEventListener('message', (ev) => {
+    socket.addEventListener("message", (ev) => {
       let msg: ServerMessage;
       try {
-        msg = JSON.parse(typeof ev.data === 'string' ? ev.data : '') as ServerMessage;
+        msg = JSON.parse(typeof ev.data === "string" ? ev.data : "") as ServerMessage;
       } catch {
         return;
       }
-      if (msg.type === 'sessions') {
+      if (msg.type === "sessions") {
         this.latestSessions = msg.sessions;
         for (const fn of this.sessionsListeners) fn(msg.sessions);
       }
@@ -119,13 +115,13 @@ export class WsClient {
       if (this.socket === socket) this.socket = null;
       this.scheduleReconnect();
     };
-    socket.addEventListener('close', closeOrError);
-    socket.addEventListener('error', closeOrError);
+    socket.addEventListener("close", closeOrError);
+    socket.addEventListener("error", closeOrError);
   }
 
   private scheduleReconnect() {
     if (this.destroyed) return;
-    this.setStatus('reconnecting');
+    this.setStatus("reconnecting");
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;
       this.retryDelay = Math.min(this.retryDelay * 2, MAX_RETRY_MS);

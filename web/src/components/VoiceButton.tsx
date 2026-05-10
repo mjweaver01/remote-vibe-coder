@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { Loader2, Mic, MicOff } from './icons.ts';
-import { useToast } from '../hooks/useToast.ts';
-import { transcribe, loadTranscriber, type LoadProgress } from '../lib/whisper.ts';
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Mic, MicOff } from "./icons.ts";
+import { useToast } from "../hooks/useToast.ts";
+import { transcribe, loadTranscriber, type LoadProgress } from "../lib/whisper.ts";
 
 type State =
-  | { kind: 'idle' }
-  | { kind: 'loading'; progress: number }
-  | { kind: 'recording'; startedAt: number }
-  | { kind: 'transcribing' };
+  | { kind: "idle" }
+  | { kind: "loading"; progress: number }
+  | { kind: "recording"; startedAt: number }
+  | { kind: "transcribing" };
 
 interface Props {
   /** Called with the transcribed text when recording stops & transcription completes. */
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function VoiceButton({ onText }: Props) {
-  const [state, setState] = useState<State>({ kind: 'idle' });
+  const [state, setState] = useState<State>({ kind: "idle" });
   const [hasMic, setHasMic] = useState(true);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
@@ -23,7 +23,7 @@ export function VoiceButton({ onText }: Props) {
   const toast = useToast();
 
   useEffect(() => {
-    setHasMic(typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia);
+    setHasMic(typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia);
   }, []);
 
   useEffect(() => {
@@ -33,11 +33,11 @@ export function VoiceButton({ onText }: Props) {
   }, []);
 
   const handleTap = async () => {
-    if (state.kind === 'recording') {
+    if (state.kind === "recording") {
       stopRecording();
       return;
     }
-    if (state.kind !== 'idle') return; // already loading/transcribing
+    if (state.kind !== "idle") return; // already loading/transcribing
     await startRecording();
   };
 
@@ -48,16 +48,23 @@ export function VoiceButton({ onText }: Props) {
 
       // Kick off model load in parallel — usually fast on second use.
       void loadTranscriber((p: LoadProgress) => {
-        if (state.kind === 'loading' && typeof p.loaded === 'number' && typeof p.total === 'number' && p.total > 0) {
-          setState({ kind: 'loading', progress: Math.min(1, p.loaded / p.total) });
+        if (
+          state.kind === "loading" &&
+          typeof p.loaded === "number" &&
+          typeof p.total === "number" &&
+          p.total > 0
+        ) {
+          setState({ kind: "loading", progress: Math.min(1, p.loaded / p.total) });
         }
       }).catch(() => {
         // Errors surface when we actually try to transcribe.
       });
 
-      const mimeType =
-        MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' :
-        MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+          ? "audio/mp4"
+          : "";
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       chunksRef.current = [];
       recorder.ondataavailable = (ev) => {
@@ -65,7 +72,7 @@ export function VoiceButton({ onText }: Props) {
       };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, {
-          type: recorder.mimeType || 'audio/webm',
+          type: recorder.mimeType || "audio/webm",
         });
         stream.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -73,16 +80,16 @@ export function VoiceButton({ onText }: Props) {
       };
       recorder.start();
       recorderRef.current = recorder;
-      setState({ kind: 'recording', startedAt: Date.now() });
+      setState({ kind: "recording", startedAt: Date.now() });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not access microphone';
-      toast.push('error', msg);
-      setState({ kind: 'idle' });
+      const msg = err instanceof Error ? err.message : "Could not access microphone";
+      toast.push("error", msg);
+      setState({ kind: "idle" });
     }
   };
 
   const stopRecording = () => {
-    setState({ kind: 'transcribing' });
+    setState({ kind: "transcribing" });
     recorderRef.current?.stop();
     recorderRef.current = null;
   };
@@ -90,39 +97,35 @@ export function VoiceButton({ onText }: Props) {
   const runTranscription = async (blob: Blob) => {
     try {
       const text = await transcribe(blob, (p) => {
-        if (typeof p.loaded === 'number' && typeof p.total === 'number' && p.total > 0) {
-          setState({ kind: 'loading', progress: Math.min(1, p.loaded / p.total) });
+        if (typeof p.loaded === "number" && typeof p.total === "number" && p.total > 0) {
+          setState({ kind: "loading", progress: Math.min(1, p.loaded / p.total) });
         }
       });
       if (text) onText(text);
-      else toast.push('info', 'No speech detected');
+      else toast.push("info", "No speech detected");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Transcription failed';
-      toast.push('error', msg);
+      const msg = err instanceof Error ? err.message : "Transcription failed";
+      toast.push("error", msg);
     } finally {
-      setState({ kind: 'idle' });
+      setState({ kind: "idle" });
     }
   };
 
   if (!hasMic) return null;
 
-  const isRecording = state.kind === 'recording';
-  const isBusy = state.kind === 'loading' || state.kind === 'transcribing';
+  const isRecording = state.kind === "recording";
+  const isBusy = state.kind === "loading" || state.kind === "transcribing";
 
   const cls = [
-    'keybar-btn',
-    'keybar-btn-voice',
-    isRecording ? 'is-recording' : '',
-    isBusy ? 'is-busy' : '',
+    "keybar-btn",
+    "keybar-btn-voice",
+    isRecording ? "is-recording" : "",
+    isBusy ? "is-busy" : "",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
-  const ariaLabel = isRecording
-    ? 'Stop recording'
-    : isBusy
-    ? 'Transcribing'
-    : 'Start voice input';
+  const ariaLabel = isRecording ? "Stop recording" : isBusy ? "Transcribing" : "Start voice input";
 
   return (
     <button

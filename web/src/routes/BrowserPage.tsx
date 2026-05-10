@@ -1,34 +1,41 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { ChevronRight, Folder, History, Inbox, Search, SquareTerminal, X } from '../components/icons.ts';
-import { EmptyState } from '../components/EmptyState.tsx';
-import { LoadingState } from '../components/LoadingState.tsx';
-import { Topbar } from '../components/Topbar.tsx';
-import { useAsync } from '../hooks/useAsync.ts';
-import { useSessions } from '../hooks/useSessions.ts';
-import { fetchFolders } from '../lib/api.ts';
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import {
+  ChevronRight,
+  Folder,
+  History,
+  Inbox,
+  Search,
+  SquareTerminal,
+  X,
+} from "../components/icons.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
+import { LoadingState } from "../components/LoadingState.tsx";
+import { Topbar } from "../components/Topbar.tsx";
+import { useAsync } from "../hooks/useAsync.ts";
+import { useSessions } from "../hooks/useSessions.ts";
+import { fetchFolders } from "../lib/api.ts";
 
-const PATH_PARAM = 'path';
+const PATH_PARAM = "path";
 
 export function BrowserPage() {
   const [params, setParams] = useSearchParams();
   const path = params.get(PATH_PARAM) ?? undefined;
   const navigate = useNavigate();
   const sessions = useSessions();
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
 
-  const { data, error, loading, reload } = useAsync(
-    (signal) => fetchFolders(path, signal),
-    [path],
-  );
+  const { data, error, loading, reload } = useAsync((signal) => fetchFolders(path, signal), [path]);
 
   useEffect(() => {
     if (data) document.title = `${data.cwdLabel} · remote-vibe-coder`;
-    else document.title = 'remote-vibe-coder';
+    else document.title = "remote-vibe-coder";
   }, [data]);
 
   // Clear filter when navigating to a different folder
-  useEffect(() => { setQuery(''); }, [path]);
+  useEffect(() => {
+    setQuery("");
+  }, [path]);
 
   const navigateTo = (next: string) => {
     const sp = new URLSearchParams();
@@ -43,10 +50,7 @@ export function BrowserPage() {
 
   return (
     <main className="page page-browser">
-      <Topbar
-        title="remote-vibe-coder"
-        subtitle={data ? data.cwdLabel : path ?? ''}
-      />
+      <Topbar title="remote-vibe-coder" subtitle={data ? data.cwdLabel : (path ?? "")} />
       <div className="page-body">
         {loading && !data ? <LoadingState label="Reading folder…" /> : null}
 
@@ -75,7 +79,7 @@ export function BrowserPage() {
                     <div className="row-body">
                       <div className="row-name">{s.cwdLabel}</div>
                       <div className="row-meta">
-                        {s.viewers === 1 ? '1 viewer' : `${s.viewers} viewers`}
+                        {s.viewers === 1 ? "1 viewer" : `${s.viewers} viewers`}
                       </div>
                     </div>
                     <ChevronRight size={16} className="row-chev" aria-hidden="true" />
@@ -101,7 +105,7 @@ export function BrowserPage() {
                     <button
                       type="button"
                       className="browser-search-clear"
-                      onClick={() => setQuery('')}
+                      onClick={() => setQuery("")}
                       aria-label="Clear filter"
                     >
                       <X size={12} aria-hidden="true" />
@@ -135,11 +139,7 @@ export function BrowserPage() {
               ) : (
                 visibleEntries.map((e) => (
                   <div key={e.path} className="row row-folder">
-                    <button
-                      type="button"
-                      className="row-press"
-                      onClick={() => navigateTo(e.path)}
-                    >
+                    <button type="button" className="row-press" onClick={() => navigateTo(e.path)}>
                       <Folder size={18} className="row-icon" aria-hidden="true" />
                       <div className="row-body">
                         <div className="row-name">{e.name}</div>

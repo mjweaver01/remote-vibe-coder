@@ -1,6 +1,6 @@
-import { Link } from 'react-router';
-import { ArrowLeft, FileX } from '../components/icons.ts';
-import { EmptyState } from '../components/EmptyState.tsx';
+import { Link } from "react-router";
+import { ArrowLeft, FileX } from "../components/icons.ts";
+import { EmptyState } from "../components/EmptyState.tsx";
 
 export function NotFoundPage() {
   return (

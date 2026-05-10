@@ -1,10 +1,10 @@
-import { readdir, stat } from 'node:fs/promises';
-import { resolve, sep, basename } from 'node:path';
-import { homedir } from 'node:os';
-import type { FolderEntry } from './types.ts';
+import { readdir, stat } from "node:fs/promises";
+import { resolve, sep, basename } from "node:path";
+import { homedir } from "node:os";
+import type { FolderEntry } from "./types.ts";
 
 export function expandHome(p: string): string {
-  if (p === '~' || p.startsWith('~/')) return p.replace('~', homedir());
+  if (p === "~" || p.startsWith("~/")) return p.replace("~", homedir());
   return p;
 }
 
@@ -15,7 +15,10 @@ export function isPathInside(child: string, parent: string): boolean {
   return c.startsWith(p.endsWith(sep) ? p : p + sep);
 }
 
-export async function listFolders(absPath: string, root: string): Promise<{
+export async function listFolders(
+  absPath: string,
+  root: string
+): Promise<{
   cwd: string;
   cwdLabel: string;
   parent: string | null;
@@ -28,7 +31,7 @@ export async function listFolders(absPath: string, root: string): Promise<{
   const dirents = await readdir(cwd, { withFileTypes: true });
   const entries: FolderEntry[] = [];
   for (const d of dirents) {
-    if (d.name.startsWith('.')) continue;
+    if (d.name.startsWith(".")) continue;
     const full = resolve(cwd, d.name);
     let isDir = d.isDirectory();
     if (d.isSymbolicLink()) {
@@ -42,10 +45,11 @@ export async function listFolders(absPath: string, root: string): Promise<{
     entries.push({ name: d.name, path: full, isDir: true });
   }
   entries.sort((a, b) => a.name.localeCompare(b.name));
-  const parent = cwd === resolve(root) ? null : resolve(cwd, '..');
+  const parent = cwd === resolve(root) ? null : resolve(cwd, "..");
   return {
     cwd,
-    cwdLabel: cwd === resolve(root) ? `~/${basename(root)}` : cwd.replace(root, `~/${basename(root)}`),
+    cwdLabel:
+      cwd === resolve(root) ? `~/${basename(root)}` : cwd.replace(root, `~/${basename(root)}`),
     parent: parent && isPathInside(parent, root) ? parent : null,
     entries,
   };

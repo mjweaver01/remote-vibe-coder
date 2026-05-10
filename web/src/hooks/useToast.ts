@@ -1,8 +1,8 @@
-import { useContext } from 'react';
-import { ToastContext, type ToastApi } from '../providers/ToastProvider.tsx';
+import { useContext } from "react";
+import { ToastContext, type ToastApi } from "../providers/ToastProvider.tsx";
 
 export function useToast(): ToastApi {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');
+  if (!ctx) throw new Error("useToast must be used inside <ToastProvider>");
   return ctx;
 }

@@ -1,5 +1,5 @@
-import { createContext, useEffect, useRef, type ReactNode } from 'react';
-import { getWsClient, type WsClient } from '../lib/ws.ts';
+import { createContext, useEffect, useRef, type ReactNode } from "react";
+import { getWsClient, type WsClient } from "../lib/ws.ts";
 
 export const WsContext = createContext<WsClient | null>(null);
 

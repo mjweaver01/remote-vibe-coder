@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { languageForFile, loadMonaco } from '../lib/monaco.ts';
+import { useEffect, useRef } from "react";
+import { languageForFile, loadMonaco } from "../lib/monaco.ts";
 
 interface Props {
   /** When provided, renders a side-by-side / inline diff editor. */
@@ -42,12 +42,12 @@ export function MonacoCode({ diff, code, fileName }: Props) {
       diffEditorRef.current?.dispose();
       editorRef.current = null;
       diffEditorRef.current = null;
-      container.innerHTML = '';
+      container.innerHTML = "";
 
       if (diff) {
         const ed = monaco.editor.createDiffEditor(container, {
           readOnly: true,
-          theme: 'vs-dark',
+          theme: "vs-dark",
           automaticLayout: true,
           renderSideBySide: isWide,
           scrollBeyondLastLine: false,
@@ -64,15 +64,15 @@ export function MonacoCode({ diff, code, fileName }: Props) {
         };
       } else {
         const ed = monaco.editor.create(container, {
-          value: code ?? '',
+          value: code ?? "",
           language: lang,
           readOnly: true,
-          theme: 'vs-dark',
+          theme: "vs-dark",
           automaticLayout: true,
           minimap: { enabled: isWide },
           scrollBeyondLastLine: false,
           fontSize: 13,
-          renderWhitespace: 'selection',
+          renderWhitespace: "selection",
         });
         editorRef.current = ed;
         cleanup = () => ed.dispose();

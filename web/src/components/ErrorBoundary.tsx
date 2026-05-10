@@ -1,6 +1,6 @@
-import { Component, type ReactNode } from 'react';
-import { AlertCircle, RotateCcw } from './icons.ts';
-import { EmptyState } from './EmptyState.tsx';
+import { Component, type ReactNode } from "react";
+import { AlertCircle, RotateCcw } from "./icons.ts";
+import { EmptyState } from "./EmptyState.tsx";
 
 interface Props {
   children: ReactNode;
@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   override componentDidCatch(error: Error) {
     // eslint-disable-next-line no-console
-    console.error('[error-boundary]', error);
+    console.error("[error-boundary]", error);
   }
 
   reset = () => this.setState({ error: null });

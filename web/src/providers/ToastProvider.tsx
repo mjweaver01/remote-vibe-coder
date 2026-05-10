@@ -1,14 +1,14 @@
-import { createContext, useCallback, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useState, type ReactNode } from "react";
 
 export interface Toast {
   id: number;
-  kind: 'info' | 'error' | 'success';
+  kind: "info" | "error" | "success";
   message: string;
 }
 
 export interface ToastApi {
   toasts: Toast[];
-  push(kind: Toast['kind'], message: string): number;
+  push(kind: Toast["kind"], message: string): number;
   dismiss(id: number): void;
 }
 
@@ -25,18 +25,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const push = useCallback(
-    (kind: Toast['kind'], message: string) => {
+    (kind: Toast["kind"], message: string) => {
       const id = nextId++;
       setToasts((cur) => [...cur, { id, kind, message }]);
       window.setTimeout(() => dismiss(id), DURATION_MS);
       return id;
     },
-    [dismiss],
+    [dismiss]
   );
 
   return (
-    <ToastContext.Provider value={{ toasts, push, dismiss }}>
-      {children}
-    </ToastContext.Provider>
+    <ToastContext.Provider value={{ toasts, push, dismiss }}>{children}</ToastContext.Provider>
   );
 }

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, File as FileIcon, Folder, Inbox, Loader2 } from './icons.ts';
-import { fetchTree, type TreeEntry } from '../lib/api.ts';
-import { EmptyState } from './EmptyState.tsx';
+import { useCallback, useEffect, useState } from "react";
+import { ChevronDown, ChevronRight, File as FileIcon, Folder, Inbox, Loader2 } from "./icons.ts";
+import { fetchTree, type TreeEntry } from "../lib/api.ts";
+import { EmptyState } from "./EmptyState.tsx";
 
 interface NodeState {
   loaded: boolean;
@@ -20,35 +20,32 @@ export function FileTree({ rootPath, selectedPath, onSelectFile }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set([rootPath]));
   const [nodes, setNodes] = useState<Map<string, NodeState>>(() => new Map());
 
-  const loadDir = useCallback(
-    async (absPath: string) => {
+  const loadDir = useCallback(async (absPath: string) => {
+    setNodes((prev) => {
+      const next = new Map(prev);
+      next.set(absPath, { loaded: false, loading: true, error: null, children: [] });
+      return next;
+    });
+    try {
+      const data = await fetchTree(absPath);
       setNodes((prev) => {
         const next = new Map(prev);
-        next.set(absPath, { loaded: false, loading: true, error: null, children: [] });
+        next.set(absPath, { loaded: true, loading: false, error: null, children: data.entries });
         return next;
       });
-      try {
-        const data = await fetchTree(absPath);
-        setNodes((prev) => {
-          const next = new Map(prev);
-          next.set(absPath, { loaded: true, loading: false, error: null, children: data.entries });
-          return next;
+    } catch (err) {
+      setNodes((prev) => {
+        const next = new Map(prev);
+        next.set(absPath, {
+          loaded: false,
+          loading: false,
+          error: err instanceof Error ? err.message : String(err),
+          children: [],
         });
-      } catch (err) {
-        setNodes((prev) => {
-          const next = new Map(prev);
-          next.set(absPath, {
-            loaded: false,
-            loading: false,
-            error: err instanceof Error ? err.message : String(err),
-            children: [],
-          });
-          return next;
-        });
-      }
-    },
-    [],
-  );
+        return next;
+      });
+    }
+  }, []);
 
   // Load root on mount + reload when rootPath changes
   useEffect(() => {
@@ -77,7 +74,7 @@ export function FileTree({ rootPath, selectedPath, onSelectFile }: Props) {
       <div key={entry.path} className="tree-node">
         <button
           type="button"
-          className={`tree-row${entry.isDir ? ' is-dir' : ' is-file'}${isSelected ? ' is-selected' : ''}`}
+          className={`tree-row${entry.isDir ? " is-dir" : " is-file"}${isSelected ? " is-selected" : ""}`}
           style={{ paddingLeft: 8 + depth * 14 }}
           onClick={() => (entry.isDir ? toggleDir(entry.path) : onSelectFile(entry.path))}
         >
@@ -151,7 +148,7 @@ export function FileTree({ rootPath, selectedPath, onSelectFile }: Props) {
 
   return (
     <div className="tree" role="tree">
-      <div className="tree-root-label">{rootPath.split('/').pop() ?? rootPath}</div>
+      <div className="tree-root-label">{rootPath.split("/").pop() ?? rootPath}</div>
       {root.children.map((c) => renderNode(c, 0))}
     </div>
   );

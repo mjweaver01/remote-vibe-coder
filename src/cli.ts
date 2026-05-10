@@ -1,11 +1,11 @@
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve, join } from 'node:path';
-import { existsSync, statSync } from 'node:fs';
-import { networkInterfaces } from 'node:os';
-import qrcode from 'qrcode-terminal';
-import { startServer } from './server.ts';
-import { generateToken } from './auth.ts';
-import { expandHome } from './files.ts';
+import { fileURLToPath } from "node:url";
+import { dirname, resolve, join } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { networkInterfaces } from "node:os";
+import qrcode from "qrcode-terminal";
+import { startServer } from "./server.ts";
+import { generateToken } from "./auth.ts";
+import { expandHome } from "./files.ts";
 
 interface Flags {
   port: number;
@@ -19,10 +19,10 @@ interface Flags {
 function parseArgs(argv: string[]): Flags {
   const flags: Flags = {
     port: 4310,
-    host: '127.0.0.1',
-    root: expandHome('~/Websites'),
+    host: "127.0.0.1",
+    root: expandHome("~/Websites"),
     token: null,
-    command: 'claude',
+    command: "claude",
     help: false,
   };
   let tokenFlagSeen = false;
@@ -38,37 +38,37 @@ function parseArgs(argv: string[]): Flags {
       return v;
     };
     switch (a) {
-      case '--port':
-      case '-p':
+      case "--port":
+      case "-p":
         flags.port = Number(next(a));
         break;
-      case '--host':
-      case '-H':
+      case "--host":
+      case "-H":
         flags.host = next(a);
         break;
-      case '--root':
-      case '-r':
+      case "--root":
+      case "-r":
         flags.root = resolve(expandHome(next(a)));
         break;
-      case '--token':
-      case '-t':
+      case "--token":
+      case "-t":
         flags.token = next(a);
         tokenFlagSeen = true;
         break;
-      case '--no-token':
+      case "--no-token":
         flags.token = null;
         tokenFlagSeen = true;
         break;
-      case '--command':
-      case '-c':
+      case "--command":
+      case "-c":
         flags.command = next(a);
         break;
-      case '--help':
-      case '-h':
+      case "--help":
+      case "-h":
         flags.help = true;
         break;
       default:
-        if (a.startsWith('--')) {
+        if (a.startsWith("--")) {
           console.error(`Unknown flag: ${a}`);
           process.exit(2);
         }
@@ -76,7 +76,7 @@ function parseArgs(argv: string[]): Flags {
   }
 
   // Auto-token when bound to a non-loopback host and the user didn't say otherwise
-  if (!tokenFlagSeen && flags.host !== '127.0.0.1' && flags.host !== 'localhost') {
+  if (!tokenFlagSeen && flags.host !== "127.0.0.1" && flags.host !== "localhost") {
     flags.token = generateToken();
   }
 
@@ -104,7 +104,7 @@ function lanAddresses(): string[] {
   const ifs = networkInterfaces();
   for (const list of Object.values(ifs)) {
     for (const i of list ?? []) {
-      if (i.family === 'IPv4' && !i.internal) out.push(i.address);
+      if (i.family === "IPv4" && !i.internal) out.push(i.address);
     }
   }
   return out;
@@ -114,15 +114,15 @@ function locateStaticDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   // Prefer bundled output — it has the compiled app.js and xterm.css
   const candidates = [
-    resolve(here, 'web'),           // prod: dist/cli.js → dist/web/
-    resolve(here, '../dist/web'),   // dev (tsx src/cli.ts): ../dist/web/
-    resolve(here, '../web'),        // raw source (only HTML/CSS will work)
+    resolve(here, "web"), // prod: dist/cli.js → dist/web/
+    resolve(here, "../dist/web"), // dev (tsx src/cli.ts): ../dist/web/
+    resolve(here, "../web"), // raw source (only HTML/CSS will work)
   ];
   for (const c of candidates) {
-    if (existsSync(join(c, 'assets', 'app.js'))) return c;
+    if (existsSync(join(c, "assets", "app.js"))) return c;
   }
   throw new Error(
-    `could not locate built web assets — run "bun run build" first.\nLooked in:\n  - ${candidates.join('\n  - ')}`,
+    `could not locate built web assets — run "bun run build" first.\nLooked in:\n  - ${candidates.join("\n  - ")}`
   );
 }
 
@@ -153,22 +153,22 @@ async function main() {
     command: flags.command,
   });
 
-  const reset = '\x1b[0m';
-  const dim = '\x1b[2m';
-  const bold = '\x1b[1m';
-  const cyan = '\x1b[36m';
-  const yellow = '\x1b[33m';
+  const reset = "\x1b[0m";
+  const dim = "\x1b[2m";
+  const bold = "\x1b[1m";
+  const cyan = "\x1b[36m";
+  const yellow = "\x1b[33m";
 
-  console.log('');
+  console.log("");
   console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
   console.log(`${dim}root:${reset}  ${flags.root}`);
   console.log(`${dim}host:${reset}  ${flags.host}:${flags.port}`);
-  console.log('');
+  console.log("");
 
   const urls: string[] = [];
-  if (flags.host === '0.0.0.0') {
+  if (flags.host === "0.0.0.0") {
     for (const addr of lanAddresses()) {
-      const u = `http://${addr}:${flags.port}/${flags.token ? `?token=${flags.token}` : ''}`;
+      const u = `http://${addr}:${flags.port}/${flags.token ? `?token=${flags.token}` : ""}`;
       urls.push(u);
     }
     if (urls.length === 0) urls.push(server.url);
@@ -179,20 +179,20 @@ async function main() {
   for (const u of urls) {
     console.log(`  ${bold}→${reset} ${u}`);
   }
-  console.log('');
+  console.log("");
 
   if (flags.token) {
     console.log(`${dim}token:${reset} ${flags.token}`);
-    console.log('');
+    console.log("");
   }
 
   // QR code for the first URL — handy for phones
-  if (flags.host === '0.0.0.0' && urls.length > 0) {
+  if (flags.host === "0.0.0.0" && urls.length > 0) {
     console.log(`${yellow}Scan with your phone:${reset}`);
     qrcode.generate(urls[0]!, { small: true });
   }
 
-  if (flags.host !== '0.0.0.0' && flags.host !== 'localhost' && flags.host !== '127.0.0.1') {
+  if (flags.host !== "0.0.0.0" && flags.host !== "localhost" && flags.host !== "127.0.0.1") {
     // Custom host (e.g. tailscale ip) — QR is still useful
     console.log(`${yellow}Scan with your phone:${reset}`);
     qrcode.generate(server.url, { small: true });
@@ -208,8 +208,8 @@ async function main() {
     await server.close();
     process.exit(0);
   };
-  process.on('SIGINT', () => shutdown('SIGINT'));
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 }
 
 main().catch((err) => {

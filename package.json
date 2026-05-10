@@ -15,7 +15,8 @@
     "build": "tsx src/build.ts",
     "start": "node dist/cli.js",
     "postinstall": "node scripts/fix-pty-perms.js",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,css,json}\" \"web/**/*.{ts,tsx,js,css,json}\""
   },
   "engines": {
     "node": ">=20"

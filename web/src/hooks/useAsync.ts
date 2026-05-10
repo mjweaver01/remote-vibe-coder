@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 export interface AsyncState<T> {
   data: T | null;
@@ -13,7 +13,7 @@ export interface AsyncState<T> {
  */
 export function useAsync<T>(
   producer: (signal: AbortSignal) => Promise<T>,
-  deps: ReadonlyArray<unknown>,
+  deps: ReadonlyArray<unknown>
 ): AsyncState<T> & { reload: () => void } {
   const [state, setState] = useState<AsyncState<T>>({ data: null, error: null, loading: true });
   const [tick, setTick] = useState(0);
@@ -29,8 +29,12 @@ export function useAsync<T>(
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        if (err instanceof DOMException && err.name === 'AbortError') return;
-        setState({ data: null, error: err instanceof Error ? err : new Error(String(err)), loading: false });
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        setState({
+          data: null,
+          error: err instanceof Error ? err : new Error(String(err)),
+          loading: false,
+        });
       });
     return () => {
       cancelled = true;

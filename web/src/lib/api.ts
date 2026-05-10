@@ -1,27 +1,27 @@
 // Typed REST client for the server's /api endpoints.
 
-import type {
-  FolderEntry,
-  PastSessionInfo,
-} from '../../../src/types.ts';
-import { withToken } from './auth.ts';
+import type { FolderEntry, PastSessionInfo } from "../../../src/types.ts";
+import { withToken } from "./auth.ts";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string
+  ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
 async function json<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(withToken(path), { signal });
   if (!res.ok) {
-    let detail = '';
+    let detail = "";
     try {
       const body = await res.json();
-      detail = body?.error ?? '';
+      detail = body?.error ?? "";
     } catch {
-      detail = await res.text().catch(() => '');
+      detail = await res.text().catch(() => "");
     }
     throw new ApiError(res.status, detail || `HTTP ${res.status}`);
   }
@@ -38,7 +38,7 @@ export interface FolderListing {
 }
 
 export function fetchFolders(path?: string, signal?: AbortSignal): Promise<FolderListing> {
-  const qs = path ? `?path=${encodeURIComponent(path)}` : '';
+  const qs = path ? `?path=${encodeURIComponent(path)}` : "";
   return json<FolderListing>(`/api/folders${qs}`, signal);
 }
 
@@ -90,10 +90,13 @@ export function fetchDiff(path: string, signal?: AbortSignal): Promise<DiffResul
 
 // ---------- History ----------
 
-export function fetchHistory(path: string, signal?: AbortSignal): Promise<{ sessions: PastSessionInfo[] }> {
+export function fetchHistory(
+  path: string,
+  signal?: AbortSignal
+): Promise<{ sessions: PastSessionInfo[] }> {
   return json<{ sessions: PastSessionInfo[] }>(
     `/api/history?path=${encodeURIComponent(path)}`,
-    signal,
+    signal
   );
 }
 
@@ -105,5 +108,5 @@ export interface ServerConfig {
 }
 
 export function fetchConfig(signal?: AbortSignal): Promise<ServerConfig> {
-  return json<ServerConfig>('/api/config', signal);
+  return json<ServerConfig>("/api/config", signal);
 }

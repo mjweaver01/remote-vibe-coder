@@ -1,18 +1,33 @@
 // File reading + git diff for the FilesPanel UI.
 // All operations are sandboxed under a session's cwd.
 
-import { execFile } from 'node:child_process';
-import { readFile, readdir, stat } from 'node:fs/promises';
-import { resolve, join, sep, relative, basename } from 'node:path';
-import { promisify } from 'node:util';
+import { execFile } from "node:child_process";
+import { readFile, readdir, stat } from "node:fs/promises";
+import { resolve, join, sep, relative, basename } from "node:path";
+import { promisify } from "node:util";
 
 const execFileP = promisify(execFile);
 
 const MAX_FILE_BYTES = 1024 * 1024; // 1 MB
 const SKIP_DIRS = new Set([
-  'node_modules', '.git', '.next', 'dist', 'build', '.turbo', '.cache',
-  '.parcel-cache', '.svelte-kit', '.vercel', '.output', 'coverage',
-  '__pycache__', '.pytest_cache', '.venv', 'venv', '.idea', '.vscode',
+  "node_modules",
+  ".git",
+  ".next",
+  "dist",
+  "build",
+  ".turbo",
+  ".cache",
+  ".parcel-cache",
+  ".svelte-kit",
+  ".vercel",
+  ".output",
+  "coverage",
+  "__pycache__",
+  ".pytest_cache",
+  ".venv",
+  "venv",
+  ".idea",
+  ".vscode",
 ]);
 
 function isPathInside(child: string, parent: string): boolean {
@@ -28,17 +43,20 @@ export interface TreeEntry {
   isDir: boolean;
 }
 
-export async function listTree(absPath: string, sandboxRoot: string): Promise<{
+export async function listTree(
+  absPath: string,
+  sandboxRoot: string
+): Promise<{
   cwd: string;
   parent: string | null;
   entries: TreeEntry[];
 }> {
   const cwd = resolve(absPath);
-  if (!isPathInside(cwd, sandboxRoot)) throw new Error('path outside sandbox');
+  if (!isPathInside(cwd, sandboxRoot)) throw new Error("path outside sandbox");
   const dirents = await readdir(cwd, { withFileTypes: true });
   const entries: TreeEntry[] = [];
   for (const d of dirents) {
-    if (d.name.startsWith('.') && d.name !== '.gitignore' && d.name !== '.env.example') continue;
+    if (d.name.startsWith(".") && d.name !== ".gitignore" && d.name !== ".env.example") continue;
     if (SKIP_DIRS.has(d.name)) continue;
     const full = join(cwd, d.name);
     let isDir = d.isDirectory();
@@ -55,7 +73,7 @@ export async function listTree(absPath: string, sandboxRoot: string): Promise<{
     if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
-  const parent = cwd === resolve(sandboxRoot) ? null : resolve(cwd, '..');
+  const parent = cwd === resolve(sandboxRoot) ? null : resolve(cwd, "..");
   return {
     cwd,
     parent: parent && isPathInside(parent, sandboxRoot) ? parent : null,
@@ -63,7 +81,10 @@ export async function listTree(absPath: string, sandboxRoot: string): Promise<{
   };
 }
 
-export async function readFileSafe(absPath: string, sandboxRoot: string): Promise<{
+export async function readFileSafe(
+  absPath: string,
+  sandboxRoot: string
+): Promise<{
   path: string;
   name: string;
   content: string;
@@ -72,12 +93,12 @@ export async function readFileSafe(absPath: string, sandboxRoot: string): Promis
   binary: boolean;
 }> {
   const file = resolve(absPath);
-  if (!isPathInside(file, sandboxRoot)) throw new Error('path outside sandbox');
+  if (!isPathInside(file, sandboxRoot)) throw new Error("path outside sandbox");
   const s = await stat(file);
-  if (!s.isFile()) throw new Error('not a file');
+  if (!s.isFile()) throw new Error("not a file");
 
   const buf = Buffer.alloc(Math.min(s.size, MAX_FILE_BYTES));
-  const fh = await import('node:fs/promises').then((m) => m.open(file, 'r'));
+  const fh = await import("node:fs/promises").then((m) => m.open(file, "r"));
   try {
     await fh.read(buf, 0, buf.length, 0);
   } finally {
@@ -85,7 +106,7 @@ export async function readFileSafe(absPath: string, sandboxRoot: string): Promis
   }
 
   const binary = looksBinary(buf);
-  const content = binary ? '' : buf.toString('utf8');
+  const content = binary ? "" : buf.toString("utf8");
 
   return {
     path: file,
@@ -104,7 +125,10 @@ function looksBinary(buf: Buffer): boolean {
   return false;
 }
 
-export async function gitDiff(absPath: string, sandboxRoot: string): Promise<{
+export async function gitDiff(
+  absPath: string,
+  sandboxRoot: string
+): Promise<{
   path: string;
   original: string;
   modified: string;
@@ -113,7 +137,7 @@ export async function gitDiff(absPath: string, sandboxRoot: string): Promise<{
   isUntracked: boolean;
 }> {
   const file = resolve(absPath);
-  if (!isPathInside(file, sandboxRoot)) throw new Error('path outside sandbox');
+  if (!isPathInside(file, sandboxRoot)) throw new Error("path outside sandbox");
 
   // Find git root
   const root = await findGitRoot(file);
@@ -122,8 +146,8 @@ export async function gitDiff(absPath: string, sandboxRoot: string): Promise<{
     const cur = await readFileSafe(file, sandboxRoot);
     return {
       path: file,
-      original: '',
-      modified: cur.binary ? '(binary file)' : cur.content,
+      original: "",
+      modified: cur.binary ? "(binary file)" : cur.content,
       staged: false,
       inGit: false,
       isUntracked: false,
@@ -133,10 +157,10 @@ export async function gitDiff(absPath: string, sandboxRoot: string): Promise<{
   const rel = relative(root, file);
 
   // Try `git show HEAD:<rel>` for the base. If that fails, file is new.
-  let original = '';
+  let original = "";
   let isUntracked = false;
   try {
-    const { stdout } = await execFileP('git', ['show', `HEAD:${rel}`], {
+    const { stdout } = await execFileP("git", ["show", `HEAD:${rel}`], {
       cwd: root,
       maxBuffer: 10 * 1024 * 1024,
     });
@@ -146,15 +170,15 @@ export async function gitDiff(absPath: string, sandboxRoot: string): Promise<{
   }
 
   const cur = await readFileSafe(file, sandboxRoot);
-  const modified = cur.binary ? '(binary file)' : cur.content;
+  const modified = cur.binary ? "(binary file)" : cur.content;
 
   return { path: file, original, modified, staged: false, inGit: true, isUntracked };
 }
 
 async function findGitRoot(start: string): Promise<string | null> {
   try {
-    const { stdout } = await execFileP('git', ['rev-parse', '--show-toplevel'], {
-      cwd: (await stat(start)).isDirectory() ? start : resolve(start, '..'),
+    const { stdout } = await execFileP("git", ["rev-parse", "--show-toplevel"], {
+      cwd: (await stat(start)).isDirectory() ? start : resolve(start, ".."),
     });
     return stdout.trim() || null;
   } catch {

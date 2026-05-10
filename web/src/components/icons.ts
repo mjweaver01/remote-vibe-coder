@@ -34,4 +34,4 @@ export {
   SquareTerminal,
   Trash2,
   X,
-} from 'lucide-react';
+} from "lucide-react";

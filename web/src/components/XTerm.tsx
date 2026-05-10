@@ -1,7 +1,7 @@
-import { useEffect, useImperativeHandle, useRef, forwardRef } from 'react';
-import { Terminal } from '@xterm/xterm';
-import { FitAddon } from '@xterm/addon-fit';
-import { WebLinksAddon } from '@xterm/addon-web-links';
+import { useEffect, useImperativeHandle, useRef, forwardRef } from "react";
+import { Terminal } from "@xterm/xterm";
+import { FitAddon } from "@xterm/addon-fit";
+import { WebLinksAddon } from "@xterm/addon-web-links";
 
 export interface XTermHandle {
   focus(): void;
@@ -18,7 +18,7 @@ interface Props {
 
 export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
   { initialReplay, onData, onResize },
-  ref,
+  ref
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -41,11 +41,11 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
       fontSize: 13,
       fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
       theme: {
-        background: '#000000',
-        foreground: '#e9e9ec',
-        cursor: '#ff8a4c',
-        cursorAccent: '#000000',
-        selectionBackground: 'rgba(255,138,76,0.35)',
+        background: "#000000",
+        foreground: "#e9e9ec",
+        cursor: "#ff8a4c",
+        cursorAccent: "#000000",
+        selectionBackground: "rgba(255,138,76,0.35)",
       },
       allowProposedApi: true,
       scrollback: 5000,

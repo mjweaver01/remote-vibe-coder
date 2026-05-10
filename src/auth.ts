@@ -1,7 +1,7 @@
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from "node:crypto";
 
 export function generateToken(): string {
-  return randomBytes(24).toString('base64url');
+  return randomBytes(24).toString("base64url");
 }
 
 export function tokensMatch(expected: string | null, provided: string | null): boolean {

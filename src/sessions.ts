@@ -1,7 +1,7 @@
-import { spawn, type IPty } from 'node-pty';
-import { randomBytes } from 'node:crypto';
-import { basename } from 'node:path';
-import type { CreateMode, ServerMessage, SessionInfo } from './types.ts';
+import { spawn, type IPty } from "node-pty";
+import { randomBytes } from "node:crypto";
+import { basename } from "node:path";
+import type { CreateMode, ServerMessage, SessionInfo } from "./types.ts";
 
 const RING_BUFFER_BYTES = 64 * 1024;
 
@@ -34,7 +34,7 @@ export class SessionManager {
   /** Subscribe to session-list updates. Returns an unsubscribe fn. */
   subscribe(sink: ViewerSink): () => void {
     this.listeners.add(sink);
-    sink.send({ type: 'sessions', sessions: this.list() });
+    sink.send({ type: "sessions", sessions: this.list() });
     return () => this.listeners.delete(sink);
   }
 
@@ -55,25 +55,25 @@ export class SessionManager {
   }
 
   private broadcastSessions() {
-    const msg: ServerMessage = { type: 'sessions', sessions: this.list() };
+    const msg: ServerMessage = { type: "sessions", sessions: this.list() };
     for (const l of this.listeners) l.send(msg);
   }
 
-  create(cwd: string, cols: number, rows: number, mode: CreateMode = { kind: 'new' }): SessionInfo {
-    const id = randomBytes(4).toString('hex');
+  create(cwd: string, cols: number, rows: number, mode: CreateMode = { kind: "new" }): SessionInfo {
+    const id = randomBytes(4).toString("hex");
     const cwdLabel = labelFor(cwd);
     const args =
-      mode.kind === 'continue'
-        ? ['--continue']
-        : mode.kind === 'resume'
-        ? ['--resume', mode.conversationId]
-        : [];
+      mode.kind === "continue"
+        ? ["--continue"]
+        : mode.kind === "resume"
+          ? ["--resume", mode.conversationId]
+          : [];
     const ptyProc = spawn(this.command, args, {
-      name: 'xterm-256color',
+      name: "xterm-256color",
       cols: Math.max(20, cols | 0),
       rows: Math.max(5, rows | 0),
       cwd,
-      env: { ...process.env, TERM: 'xterm-256color' },
+      env: { ...process.env, TERM: "xterm-256color" },
     });
 
     const session: Session = {
@@ -84,20 +84,20 @@ export class SessionManager {
       cols: cols | 0,
       rows: rows | 0,
       pty: ptyProc,
-      ringBuffer: '',
+      ringBuffer: "",
       viewers: new Set(),
       ended: false,
     };
 
     ptyProc.onData((data) => {
       session.ringBuffer = appendRing(session.ringBuffer, data);
-      const msg: ServerMessage = { type: 'output', sessionId: id, data };
+      const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers) v.send(msg);
     });
 
     ptyProc.onExit(({ exitCode }) => {
       session.ended = true;
-      const msg: ServerMessage = { type: 'ended', sessionId: id, exitCode: exitCode ?? 0 };
+      const msg: ServerMessage = { type: "ended", sessionId: id, exitCode: exitCode ?? 0 };
       for (const v of session.viewers) v.send(msg);
       this.sessions.delete(id);
       this.broadcastSessions();
@@ -112,7 +112,7 @@ export class SessionManager {
     const s = this.sessions.get(sessionId);
     if (!s) return null;
     s.viewers.add(viewer);
-    viewer.send({ type: 'attached', sessionId, replay: s.ringBuffer });
+    viewer.send({ type: "attached", sessionId, replay: s.ringBuffer });
     this.broadcastSessions();
     return this.toInfo(s);
   }
@@ -179,8 +179,8 @@ function labelFor(cwd: string): string {
 
 function appendRing(buf: string, chunk: string): string {
   const next = buf + chunk;
-  if (Buffer.byteLength(next, 'utf8') <= RING_BUFFER_BYTES) return next;
+  if (Buffer.byteLength(next, "utf8") <= RING_BUFFER_BYTES) return next;
   // Trim from the front by characters; close enough for our purposes
-  const overshoot = Buffer.byteLength(next, 'utf8') - RING_BUFFER_BYTES;
+  const overshoot = Buffer.byteLength(next, "utf8") - RING_BUFFER_BYTES;
   return next.slice(overshoot);
 }

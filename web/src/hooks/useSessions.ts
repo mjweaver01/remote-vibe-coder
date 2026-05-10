@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import type { SessionInfo } from '../../../src/types.ts';
-import { useWs } from './useWs.ts';
+import { useEffect, useState } from "react";
+import type { SessionInfo } from "../../../src/types.ts";
+import { useWs } from "./useWs.ts";
 
 export function useSessions(): SessionInfo[] {
   const ws = useWs();
