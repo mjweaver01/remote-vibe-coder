@@ -1,4 +1,4 @@
-# remote-vibe-coder
+# Remote Vibe Coder
 
 Run Claude Code from your phone. A tiny local web server that wraps the real `claude` CLI in a PTY and renders it in your browser, with a folder picker, conversation history, a Monaco-powered file viewer with diff, and on-device voice transcription.
 
@@ -44,34 +44,6 @@ remote-vibe-coder [options]
       --no-token         Skip token (insecure on LAN)
   -c, --command <bin>    Command to run in each session (default: claude)
   -h, --help             Show this help
-```
-
-## Architecture
-
-```
-remote-vibe-coder/
-├── src/                   # Node server (ESM)
-│   ├── cli.ts             # entrypoint, flag parsing, QR banner
-│   ├── server.ts          # HTTP + WebSocket via Node http + ws
-│   ├── sessions.ts        # PTY session manager (multi-viewer fan-out, ring buffer)
-│   ├── files.ts           # sandboxed folder listing
-│   ├── code.ts            # tree / file / git diff for the Files panel
-│   ├── history.ts         # past Claude conversations per cwd
-│   ├── auth.ts            # token gen + constant-time compare
-│   ├── types.ts           # WS protocol types (shared with web/)
-│   └── build.ts           # esbuild entry → dist/
-└── web/                   # React 19 SPA
-    ├── index.html
-    ├── styles.css
-    └── src/
-        ├── main.tsx       # createRoot + RouterProvider
-        ├── router.tsx     # createBrowserRouter
-        ├── App.tsx        # WsProvider + ToastProvider + Outlet
-        ├── routes/        # one component per route
-        ├── components/    # XTerm, MonacoCode, FileTree, Keybar, VoiceButton, …
-        ├── hooks/         # useWs, useSessions, useToast, useAsync, …
-        ├── lib/           # api, ws, auth, monaco, whisper
-        └── providers/     # WsProvider, ToastProvider
 ```
 
 ## Trust model
