@@ -14,6 +14,7 @@
     "dev": "tsx src/dev.ts",
     "build": "tsx src/build.ts",
     "start": "node dist/cli.js",
+    "go": "node dist/cli.js --root ~/Websites --host 0.0.0.0 --port 80",
     "prepublishOnly": "npm run build",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,css,json}\" \"web/**/*.{ts,tsx,js,css,json}\""
   },
