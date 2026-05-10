@@ -68,8 +68,11 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
           lastSizeRef.current = { cols, rows };
           onResizeRef.current(cols, rows);
         }
-      } catch {
-        // container may be hidden during a tab switch
+      } catch (err) {
+        // Expected when container is hidden during a tab switch; log real errors
+        if (container.offsetParent !== null) {
+          console.error("xterm fit error:", err);
+        }
       }
     };
 

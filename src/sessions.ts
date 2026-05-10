@@ -126,9 +126,11 @@ export class SessionManager {
   }
 
   detachEverywhere(viewer: ViewerSink) {
+    let changed = false;
     for (const s of this.sessions.values()) {
-      if (s.viewers.delete(viewer)) this.broadcastSessions();
+      if (s.viewers.delete(viewer)) changed = true;
     }
+    if (changed) this.broadcastSessions();
   }
 
   input(sessionId: string, data: string) {
@@ -181,5 +183,9 @@ function appendRing(buf: string, chunk: string): string {
   const next = buf + chunk;
   const bytes = Buffer.byteLength(next, "utf8");
   if (bytes <= RING_BUFFER_BYTES) return next;
-  return Buffer.from(next, "utf8").subarray(bytes - RING_BUFFER_BYTES).toString("utf8");
+  const raw = Buffer.from(next, "utf8");
+  let offset = bytes - RING_BUFFER_BYTES;
+  // Advance past UTF-8 continuation bytes (0x80–0xBF) to land on a character boundary
+  while (offset < raw.length && (raw[offset]! & 0xc0) === 0x80) offset++;
+  return raw.subarray(offset).toString("utf8");
 }

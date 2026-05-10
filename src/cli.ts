@@ -39,9 +39,16 @@ function parseArgs(argv: string[]): Flags {
     };
     switch (a) {
       case "--port":
-      case "-p":
-        flags.port = Number(next(a));
+      case "-p": {
+        const portStr = next(a);
+        const port = Number(portStr);
+        if (!Number.isInteger(port) || port < 1 || port > 65535) {
+          console.error(`error: invalid port "${portStr}" — must be an integer between 1 and 65535`);
+          process.exit(2);
+        }
+        flags.port = port;
         break;
+      }
       case "--host":
       case "-H":
         flags.host = next(a);

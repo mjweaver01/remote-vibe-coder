@@ -165,8 +165,12 @@ export async function gitDiff(
       maxBuffer: 10 * 1024 * 1024,
     });
     original = stdout;
-  } catch {
-    isUntracked = true;
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("maxBuffer")) {
+      original = "(diff too large to display)";
+    } else {
+      isUntracked = true;
+    }
   }
 
   const cur = await readFileSafe(file, sandboxRoot);

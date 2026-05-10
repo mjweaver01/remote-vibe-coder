@@ -260,10 +260,20 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse, opts: Serve
   await serveStatic(url.pathname, opts.staticDir, res);
 }
 
+const MAX_BODY_BYTES = 1 * 1024 * 1024; // 1 MB
+
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on("data", (c: Buffer) => chunks.push(c));
+    let total = 0;
+    req.on("data", (c: Buffer) => {
+      total += c.length;
+      if (total > MAX_BODY_BYTES) {
+        req.destroy(new Error("payload too large"));
+        return;
+      }
+      chunks.push(c);
+    });
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
     req.on("error", reject);
   });
@@ -322,6 +332,7 @@ function attachWs(ws: WebSocket, sessions: SessionManager) {
       msg = JSON.parse(raw.toString());
     } catch {
       sink.send({ type: "error", message: "invalid JSON" });
+      ws.close(1008, "invalid message format");
       return;
     }
     handleClientMessage(msg, sink, sessions);

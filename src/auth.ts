@@ -9,6 +9,10 @@ export function tokensMatch(expected: string | null, provided: string | null): b
   if (!provided) return false;
   const a = Buffer.from(expected);
   const b = Buffer.from(provided);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+  try {
+    return timingSafeEqual(a, b);
+  } catch {
+    // timingSafeEqual throws when lengths differ — treat as mismatch
+    return false;
+  }
 }

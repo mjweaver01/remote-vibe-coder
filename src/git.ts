@@ -120,10 +120,13 @@ export async function gitUnstage(files: string[], sandboxRoot: string): Promise<
   await execFileP("git", ["restore", "--staged", "--", ...safeFiles], { cwd: root });
 }
 
+const MAX_COMMIT_MSG_BYTES = 100 * 1024; // 100 KB
+
 export async function gitCommit(cwd: string, message: string, sandboxRoot: string): Promise<{ hash: string }> {
   const dir = resolve(cwd);
   if (!isPathInside(dir, sandboxRoot)) throw new Error("path outside sandbox");
   if (!message.trim()) throw new Error("commit message cannot be empty");
+  if (Buffer.byteLength(message, "utf8") > MAX_COMMIT_MSG_BYTES) throw new Error("commit message too large");
   const root = await findGitRoot(dir);
   if (!root) throw new Error("not a git repository");
   const { stdout } = await execFileP("git", ["commit", "-m", message], { cwd: root });
