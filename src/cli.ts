@@ -122,7 +122,7 @@ function locateStaticDir(): string {
     if (existsSync(join(c, "assets", "app.js"))) return c;
   }
   throw new Error(
-    `could not locate built web assets — run "bun run build" first.\nLooked in:\n  - ${candidates.join("\n  - ")}`
+    `could not locate built web assets — run "npm run build" first.\nLooked in:\n  - ${candidates.join("\n  - ")}`
   );
 }
 

@@ -21,7 +21,7 @@ export function useAsync<T>(
   useEffect(() => {
     const ctrl = new AbortController();
     let cancelled = false;
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState({ data: null, error: null, loading: true });
     producer(ctrl.signal)
       .then((data) => {
         if (cancelled) return;

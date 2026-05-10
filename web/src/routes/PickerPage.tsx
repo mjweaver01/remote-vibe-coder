@@ -30,6 +30,7 @@ function approxTerminalSize(): { cols: number; rows: number } {
   const w = window.innerWidth;
   const h = window.innerHeight;
   const cols = Math.max(40, Math.floor(w / 8));
+  // 130px approximates topbar + tab strip + keybar chrome; 17px ≈ one terminal line
   const rows = Math.max(12, Math.floor((h - 130) / 17));
   return { cols, rows };
 }

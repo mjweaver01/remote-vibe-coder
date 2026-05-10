@@ -14,12 +14,11 @@
     "dev": "tsx src/dev.ts",
     "build": "tsx src/build.ts",
     "start": "node dist/cli.js",
-    "postinstall": "node scripts/fix-pty-perms.js",
     "prepublishOnly": "npm run build",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,css,json}\" \"web/**/*.{ts,tsx,js,css,json}\""
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=25"
   },
   "keywords": [
     "claude",
@@ -52,7 +51,6 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "esbuild": "^0.28.0",
-    "playwright": "^1.59.1",
     "prettier": "^3.8.3",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",

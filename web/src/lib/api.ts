@@ -133,11 +133,12 @@ export function fetchGitStatus(cwd: string, signal?: AbortSignal): Promise<GitSt
   return json<GitStatusResult>(`/api/git/status?path=${encodeURIComponent(cwd)}`, signal);
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
   const res = await fetch(withToken(path), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
   if (!res.ok) {
     let detail = "";
@@ -152,14 +153,18 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
-export function postGitStage(files: string[]): Promise<{ ok: boolean }> {
-  return post<{ ok: boolean }>("/api/git/stage", { files });
+export function postGitStage(files: string[], signal?: AbortSignal): Promise<{ ok: boolean }> {
+  return post<{ ok: boolean }>("/api/git/stage", { files }, signal);
 }
 
-export function postGitUnstage(files: string[]): Promise<{ ok: boolean }> {
-  return post<{ ok: boolean }>("/api/git/unstage", { files });
+export function postGitUnstage(files: string[], signal?: AbortSignal): Promise<{ ok: boolean }> {
+  return post<{ ok: boolean }>("/api/git/unstage", { files }, signal);
 }
 
-export function postGitCommit(cwd: string, message: string): Promise<{ hash: string }> {
-  return post<{ hash: string }>("/api/git/commit", { cwd, message });
+export function postGitCommit(
+  cwd: string,
+  message: string,
+  signal?: AbortSignal
+): Promise<{ hash: string }> {
+  return post<{ hash: string }>("/api/git/commit", { cwd, message }, signal);
 }

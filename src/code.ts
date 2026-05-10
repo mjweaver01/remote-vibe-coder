@@ -1,5 +1,5 @@
 // File reading + git diff for the FilesPanel UI.
-// All operations are sandboxed under a session's cwd.
+// All operations are sandboxed under --root.
 
 import { execFile } from "node:child_process";
 import { readFile, readdir, stat } from "node:fs/promises";

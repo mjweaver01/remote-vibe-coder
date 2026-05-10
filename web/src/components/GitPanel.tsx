@@ -53,7 +53,7 @@ function statusBadge(code: string) {
   );
 }
 
-interface FilRowProps {
+interface FileRowProps {
   entry: GitFileStatus;
   statusCode: string;
   selected: boolean;
@@ -63,7 +63,7 @@ interface FilRowProps {
   actionLabel: string;
 }
 
-function FileRow({ entry, statusCode, selected, onSelect, onAction, actionLabel, actionIcon }: FilRowProps) {
+function FileRow({ entry, statusCode, selected, onSelect, onAction, actionLabel, actionIcon }: FileRowProps) {
   const name = entry.relPath.split("/").pop() ?? entry.relPath;
   const dir = entry.relPath.includes("/")
     ? entry.relPath.slice(0, entry.relPath.lastIndexOf("/"))

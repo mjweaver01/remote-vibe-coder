@@ -71,6 +71,7 @@ remote-vibe-coder/
 │   ├── sessions.ts             # PTY lifecycle: create/attach/detach/resize/kill
 │   ├── files.ts                # Sandboxed folder listing (/api/folders)
 │   ├── code.ts                 # File read, git diff, tree listing (/api/file, /api/diff, /api/tree)
+│   ├── git.ts                  # Git status/stage/unstage/commit (/api/git/*)
 │   ├── history.ts              # Past Claude conversations from ~/.claude/projects/
 │   ├── auth.ts                 # Token generation + constant-time compare
 │   ├── types.ts                # WebSocket protocol types (shared with web/)
@@ -89,9 +90,6 @@ remote-vibe-coder/
 │       ├── hooks/              # Custom React hooks
 │       ├── lib/                # Pure TS modules (api, ws, auth, monaco, whisper)
 │       └── providers/          # WsProvider, ToastProvider (React context)
-│
-├── scripts/
-│   └── fix-pty-perms.js        # postinstall: chmod +x node-pty spawn-helper binaries
 │
 ├── vite.config.ts              # Vite config (root: web/, outDir: dist/web/)
 ├── tsconfig.json               # Strict TS; covers both src/ and web/src/
@@ -229,6 +227,10 @@ All endpoints require `?token=<value>` when the server was started with a token 
 | GET    | `/api/diff?path=`    | Git diff vs HEAD. Returns `{original, modified, inGit, isUntracked}`.            |
 | GET    | `/api/history?path=` | Past Claude conversations for a cwd (reads `~/.claude/projects/`).               |
 | GET    | `/api/config`        | `{root, hasToken}` — used by the client to know the server root.                 |
+| GET    | `/api/git/status?path=` | Git status for a cwd. Returns `{inGit, root, branch, staged, unstaged, untracked}`. |
+| POST   | `/api/git/stage`     | Stage files. Body: `{files: string[]}`.                                          |
+| POST   | `/api/git/unstage`   | Unstage files. Body: `{files: string[]}`.                                        |
+| POST   | `/api/git/commit`    | Commit staged files. Body: `{cwd, message}`. Returns `{hash}`.                  |
 | GET    | `/*`                 | Static assets from `dist/web/`. Unknown paths → `index.html` (SPA fallback).     |
 
 All paths are sandboxed. Any path resolving outside `--root` is rejected with 400.
@@ -411,14 +413,13 @@ The Monaco npm package requires bundler-specific configuration and produces very
 Audio privacy. The model (~40 MB, cached in IndexedDB after first download) runs inference locally via `@huggingface/transformers`. No audio data leaves the device.
 
 **Why hand-rolled CSS?**  
-The total CSS is ~600 lines. Tailwind's overhead (PostCSS, JIT, purge config) is unjustified at this scale. Dark theme with a small token set is straightforward to maintain directly.
+The total CSS is ~1300 lines. Tailwind's overhead (PostCSS, JIT, purge config) is unjustified at this scale. Dark theme with a small token set is straightforward to maintain directly.
 
 ---
 
 ## Known Constraints and Gotchas
 
 - **`noUncheckedIndexedAccess` bites CLI arg parsing.** Any `argv[i]` returns `string | undefined`. Use the `next(flagName)` helper in `cli.ts` as the pattern.
-- **node-pty postinstall.** The `scripts/fix-pty-perms.js` postinstall script `chmod +x`'s all `spawn-helper` binaries. Without this, PTY spawning fails with `posix_spawnp failed` on some environments. Do not remove it.
 - **Monaco and `dist/web/`.** Vite's `emptyOutDir: false` is set deliberately — the monaco `min/vs/` tree is copied separately in `src/build.ts` and must not be deleted by Vite on rebuild.
 - **`claude --resume <id>` and null originalFile.** Older Claude CLI versions (< 2.1.138) crash when resuming a conversation that included a "create new file" Edit operation. Past-conversation list items now use `--continue` to avoid this. The CLI was updated to 2.1.138 to fix the root cause.
 - **Session list is in-memory.** Server restart clears all sessions. This is by design for MVP — there is no persistence layer.

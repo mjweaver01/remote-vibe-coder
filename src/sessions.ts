@@ -60,7 +60,7 @@ export class SessionManager {
   }
 
   create(cwd: string, cols: number, rows: number, mode: CreateMode = { kind: "new" }): SessionInfo {
-    const id = randomBytes(4).toString("hex");
+    const id = randomBytes(8).toString("hex");
     const cwdLabel = labelFor(cwd);
     const args =
       mode.kind === "continue"
@@ -179,8 +179,7 @@ function labelFor(cwd: string): string {
 
 function appendRing(buf: string, chunk: string): string {
   const next = buf + chunk;
-  if (Buffer.byteLength(next, "utf8") <= RING_BUFFER_BYTES) return next;
-  // Trim from the front by characters; close enough for our purposes
-  const overshoot = Buffer.byteLength(next, "utf8") - RING_BUFFER_BYTES;
-  return next.slice(overshoot);
+  const bytes = Buffer.byteLength(next, "utf8");
+  if (bytes <= RING_BUFFER_BYTES) return next;
+  return Buffer.from(next, "utf8").subarray(bytes - RING_BUFFER_BYTES).toString("utf8");
 }
