@@ -14,9 +14,10 @@ interface Props {
   rootPath: string;
   selectedPath: string | null;
   onSelectFile(path: string): void;
+  changedPaths?: Set<string>;
 }
 
-export function FileTree({ rootPath, selectedPath, onSelectFile }: Props) {
+export function FileTree({ rootPath, selectedPath, onSelectFile, changedPaths }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set([rootPath]));
   const [nodes, setNodes] = useState<Map<string, NodeState>>(() => new Map());
 
@@ -68,13 +69,14 @@ export function FileTree({ rootPath, selectedPath, onSelectFile }: Props) {
   const renderNode = (entry: TreeEntry, depth: number) => {
     const isOpen = expanded.has(entry.path);
     const isSelected = selectedPath === entry.path;
+    const isChanged = !entry.isDir && (changedPaths?.has(entry.path) ?? false);
     const node = nodes.get(entry.path);
 
     return (
       <div key={entry.path} className="tree-node">
         <button
           type="button"
-          className={`tree-row${entry.isDir ? " is-dir" : " is-file"}${isSelected ? " is-selected" : ""}`}
+          className={`tree-row${entry.isDir ? " is-dir" : " is-file"}${isSelected ? " is-selected" : ""}${isChanged ? " is-changed" : ""}`}
           style={{ paddingLeft: 8 + depth * 14 }}
           onClick={() => (entry.isDir ? toggleDir(entry.path) : onSelectFile(entry.path))}
         >
@@ -93,6 +95,7 @@ export function FileTree({ rootPath, selectedPath, onSelectFile }: Props) {
             {entry.isDir ? <Folder size={14} /> : <FileIcon size={14} />}
           </span>
           <span className="tree-name">{entry.name}</span>
+          {isChanged && <span className="tree-changed-dot" aria-hidden="true" />}
         </button>
 
         {entry.isDir && isOpen ? (

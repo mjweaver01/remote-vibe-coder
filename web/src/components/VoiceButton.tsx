@@ -6,21 +6,36 @@ interface Props {
   onText(text: string): void;
 }
 
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
-  }
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
 }
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+interface ISpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  maxAlternatives: number;
+  onresult: ((ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((ev: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+type SpeechRecognitionCtor = new () => ISpeechRecognition;
 
-function getSpeechRecognition(): typeof SpeechRecognition | null {
-  return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+function getSpeechRecognition(): SpeechRecognitionCtor | null {
+  return (
+    (window as unknown as Record<string, SpeechRecognitionCtor>)["SpeechRecognition"] ??
+    (window as unknown as Record<string, SpeechRecognitionCtor>)["webkitSpeechRecognition"] ??
+    null
+  );
 }
 
 export function VoiceButton({ onText }: Props) {
   const [isRecording, setIsRecording] = useState(false);
   const [supported, setSupported] = useState(true);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
   const toast = useToast();
 
   useEffect(() => {

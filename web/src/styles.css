@@ -680,6 +680,58 @@ button:focus-visible {
   font-size: 16px;
 }
 
+/* ----- Mobile input bar (hidden on desktop) ----- */
+.mobile-input-bar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-1);
+    flex: 0 0 auto;
+  }
+  .mobile-input {
+    flex: 1;
+    height: 42px;
+    padding: 0 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 16px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    outline: none;
+    min-width: 0;
+  }
+  .mobile-input::placeholder {
+    color: var(--text-dim);
+  }
+  .mobile-input:focus {
+    border-color: var(--accent);
+  }
+  .mobile-input-send {
+    flex: 0 0 auto;
+    width: 44px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    cursor: pointer;
+  }
+  .mobile-input-send:active {
+    opacity: 0.8;
+  }
+}
+
 /* ----- Keybar shared ----- */
 .keybar {
   border-top: 1px solid var(--border);
@@ -1286,6 +1338,16 @@ button:focus-visible {
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.tree-row.is-changed .tree-name {
+  color: #e2c08d;
+}
+.tree-changed-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #e2c08d;
 }
 
 /* ----- Mobile ----- */

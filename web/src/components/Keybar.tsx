@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowUp, CornerDownLeft, Keyboard, Skull } from "./icons.ts";
+import { ArrowUp, CornerDownLeft, Keyboard, RotateCcw, Skull } from "./icons.ts";
 
 export type KeySend = (data: string) => void;
 
@@ -27,6 +27,7 @@ const KEYS: KeyDef[] = [
   { id: "esc", label: "Esc", data: "\x1b", title: "Escape" },
   { id: "tab", label: "Tab", data: "\t", title: "Tab" },
   { id: "up", icon: ArrowUp, data: "\x1b[A", title: "Up" },
+  { id: "clear", icon: RotateCcw, data: "\x0c", title: "Clear (Ctrl+L)" },
   { id: "ctrlc", icon: Skull, data: "\x03", title: "Ctrl+C" },
 ];
 
@@ -124,11 +125,11 @@ export function Keybar({ onSend, onSummonKeyboard, voiceSlot }: Props) {
           {voiceSlot}
           <button
             className="gb-sec-btn"
-            onClick={onSummonKeyboard}
-            title="Open soft keyboard"
-            aria-label="Open soft keyboard"
+            onClick={() => onSend("\x0c")}
+            title="Clear (Ctrl+L)"
+            aria-label="Clear"
           >
-            <Keyboard size={14} aria-hidden="true" />
+            <RotateCcw size={14} aria-hidden="true" />
           </button>
           <button
             className={`gb-sec-btn gb-sec-kill${voiceSlot ? " gb-sec-span" : ""}`}

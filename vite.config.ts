@@ -11,6 +11,7 @@ export default defineConfig({
     port: DEV_SERVER_PORT,
     proxy: {
       "/api": `http://localhost:${DEV_NODE_PORT}`,
+      "/assets/monaco": `http://localhost:${DEV_NODE_PORT}`,
       "/ws": {
         target: `ws://localhost:${DEV_NODE_PORT}`,
         ws: true,

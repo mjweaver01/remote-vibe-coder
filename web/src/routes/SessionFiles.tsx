@@ -14,7 +14,7 @@ import { FileTree } from "../components/FileTree.tsx";
 import { GitPanel } from "../components/GitPanel.tsx";
 import { MonacoCode } from "../components/MonacoCode.tsx";
 import { useAsync } from "../hooks/useAsync.ts";
-import { fetchDiff, fetchFile } from "../lib/api.ts";
+import { fetchDiff, fetchFile, fetchGitStatus } from "../lib/api.ts";
 import type { SessionInfo } from "../../../src/types.ts";
 import { useState } from "react";
 
@@ -32,6 +32,18 @@ export function SessionFiles() {
 
   const filePath = params.get("file");
   const isDiff = params.get("view") === "diff";
+
+  const gitStatus = useAsync(
+    (signal) => fetchGitStatus(session.cwd, signal),
+    [session.cwd]
+  );
+  const changedPaths = gitStatus.data?.inGit
+    ? new Set([
+        ...(gitStatus.data.staged.map((f) => f.path)),
+        ...(gitStatus.data.unstaged.map((f) => f.path)),
+        ...(gitStatus.data.untracked.map((f) => f.path)),
+      ])
+    : undefined;
 
   const file = useAsync(
     async (signal) => (filePath ? fetchFile(filePath, signal) : null),
@@ -160,9 +172,12 @@ export function SessionFiles() {
         <button
           type="button"
           className={`btn${sidebarMode === "source-control" ? " is-active" : ""}`}
-          onClick={() =>
-            setSidebarMode((m) => (m === "source-control" ? "explorer" : "source-control"))
-          }
+          onClick={() => {
+            setSidebarMode((m) => {
+              if (m !== "source-control") setTreeOpen(true);
+              return m === "source-control" ? "explorer" : "source-control";
+            });
+          }}
           title={sidebarMode === "source-control" ? "Show file explorer" : "Show source control"}
           aria-pressed={sidebarMode === "source-control"}
         >
@@ -198,7 +213,7 @@ export function SessionFiles() {
               selectedPath={filePath}
             />
           ) : (
-            <FileTree rootPath={session.cwd} selectedPath={filePath} onSelectFile={setFile} />
+            <FileTree rootPath={session.cwd} selectedPath={filePath} onSelectFile={setFile} changedPaths={changedPaths} />
           )}
         </aside>
         <main className="files-viewer">{viewerNode}</main>
