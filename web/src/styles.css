@@ -1018,6 +1018,76 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
 }
+.files-tabs {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: #252526;
+  border-bottom: 1px solid #1e1e1e;
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.files-tabs::-webkit-scrollbar {
+  display: none;
+}
+.files-tab {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-right: 1px solid #1e1e1e;
+  background: #2d2d2d;
+  min-width: 80px;
+  max-width: 180px;
+}
+.files-tab.is-active {
+  background: #1e1e1e;
+  border-top: 1px solid var(--accent);
+}
+.files-tab-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  color: #9d9d9d;
+  font-size: 13px;
+  padding: 6px 4px 6px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.files-tab.is-active .files-tab-label {
+  color: #fff;
+}
+.files-tab.is-changed .files-tab-label {
+  color: #e2c08d;
+}
+.files-tab-label:hover {
+  background: transparent;
+}
+.files-tab-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: #6a6a6a;
+  padding: 4px 6px;
+  cursor: pointer;
+  border-radius: 3px;
+  opacity: 0;
+}
+.files-tab:hover .files-tab-close,
+.files-tab.is-active .files-tab-close {
+  opacity: 1;
+}
+.files-tab-close:hover {
+  background: #4a4a4a;
+  color: #ccc;
+}
 .files-viewer-status {
   display: flex;
   align-items: center;
