@@ -1,5 +1,5 @@
 import { execSync, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,18 +20,33 @@ function tag(label: string, color: string) {
   };
 }
 
-const client = spawn(bin("vite"), ["build", "--watch"], { cwd: root });
+const stampFile = resolve(root, "dist/web/assets/dev-stamp.txt");
+
+function writeStamp() {
+  try {
+    mkdirSync(resolve(root, "dist/web/assets"), { recursive: true });
+    writeFileSync(stampFile, String(Date.now()));
+  } catch {
+    // non-fatal
+  }
+}
+
+const client = spawn(bin("vite"), ["build", "--watch", "--mode", "development"], { cwd: root });
 
 client.stdout.on("data", tag("client", "36"));
 client.stderr.on("data", tag("client", "36"));
 
 // Wait for the first successful build before starting the server so that
 // dist/web/index.html exists when the server's locateStaticDir runs.
+// On every subsequent build, write a new stamp so the browser live-reloads.
 let serverStarted = false;
 client.stdout.on("data", (data: Buffer) => {
-  if (!serverStarted && data.toString().includes("built in")) {
-    serverStarted = true;
-    startServer();
+  if (data.toString().includes("built in")) {
+    writeStamp();
+    if (!serverStarted) {
+      serverStarted = true;
+      startServer();
+    }
   }
 });
 
