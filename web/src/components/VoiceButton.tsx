@@ -1,131 +1,73 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Mic, MicOff } from "./icons.ts";
+import { Mic, MicOff } from "./icons.ts";
 import { useToast } from "../hooks/useToast.ts";
-import { transcribe, loadTranscriber, type LoadProgress } from "../lib/whisper.ts";
-
-type State =
-  | { kind: "idle" }
-  | { kind: "loading"; progress: number }
-  | { kind: "recording"; startedAt: number }
-  | { kind: "transcribing" };
 
 interface Props {
-  /** Called with the transcribed text when recording stops & transcription completes. */
   onText(text: string): void;
 }
 
+declare global {
+  interface Window {
+    SpeechRecognition: typeof SpeechRecognition;
+    webkitSpeechRecognition: typeof SpeechRecognition;
+  }
+}
+
+function getSpeechRecognition(): typeof SpeechRecognition | null {
+  return window.SpeechRecognition ?? window.webkitSpeechRecognition ?? null;
+}
+
 export function VoiceButton({ onText }: Props) {
-  const [state, setState] = useState<State>({ kind: "idle" });
-  const [hasMic, setHasMic] = useState(true);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   const toast = useToast();
 
   useEffect(() => {
-    setHasMic(typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia);
+    setSupported(!!getSpeechRecognition());
   }, []);
 
-  useEffect(() => {
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
-  const handleTap = async () => {
-    if (state.kind === "recording") {
-      stopRecording();
+  const handleTap = () => {
+    if (isRecording) {
+      recognitionRef.current?.stop();
       return;
     }
-    if (state.kind !== "idle") return; // already loading/transcribing
-    await startRecording();
-  };
 
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+    const SR = getSpeechRecognition();
+    if (!SR) return;
 
-      // Kick off model load in parallel — usually fast on second use.
-      void loadTranscriber((p: LoadProgress) => {
-        if (
-          state.kind === "loading" &&
-          typeof p.loaded === "number" &&
-          typeof p.total === "number" &&
-          p.total > 0
-        ) {
-          setState({ kind: "loading", progress: Math.min(1, p.loaded / p.total) });
-        }
-      }).catch(() => {
-        // Errors surface when we actually try to transcribe.
-      });
+    const recognition = new SR();
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-          ? "audio/mp4"
-          : "";
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      chunksRef.current = [];
-      recorder.ondataavailable = (ev) => {
-        if (ev.data.size > 0) chunksRef.current.push(ev.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, {
-          type: recorder.mimeType || "audio/webm",
-        });
-        stream.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        void runTranscription(blob);
-      };
-      recorder.start();
-      recorderRef.current = recorder;
-      setState({ kind: "recording", startedAt: Date.now() });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Could not access microphone";
-      toast.push("error", msg);
-      setState({ kind: "idle" });
-    }
-  };
-
-  const stopRecording = () => {
-    setState({ kind: "transcribing" });
-    recorderRef.current?.stop();
-    recorderRef.current = null;
-  };
-
-  const runTranscription = async (blob: Blob) => {
-    try {
-      const text = await transcribe(blob, (p) => {
-        if (typeof p.loaded === "number" && typeof p.total === "number" && p.total > 0) {
-          setState({ kind: "loading", progress: Math.min(1, p.loaded / p.total) });
-        }
-      });
+    recognition.onresult = (ev) => {
+      const text = ev.results[0]?.[0]?.transcript?.trim() ?? "";
       if (text) onText(text);
       else toast.push("info", "No speech detected");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Transcription failed";
-      toast.push("error", msg);
-    } finally {
-      setState({ kind: "idle" });
-    }
+    };
+
+    recognition.onerror = (ev) => {
+      if (ev.error !== "aborted") toast.push("error", `Speech error: ${ev.error}`);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
   };
 
-  if (!hasMic) return null;
+  if (!supported) return null;
 
-  const isRecording = state.kind === "recording";
-  const isBusy = state.kind === "loading" || state.kind === "transcribing";
-
-  const cls = [
-    "keybar-btn",
-    "keybar-btn-voice",
-    isRecording ? "is-recording" : "",
-    isBusy ? "is-busy" : "",
-  ]
+  const cls = ["keybar-btn", "keybar-btn-voice", isRecording ? "is-recording" : ""]
     .filter(Boolean)
     .join(" ");
 
-  const ariaLabel = isRecording ? "Stop recording" : isBusy ? "Transcribing" : "Start voice input";
+  const ariaLabel = isRecording ? "Stop recording" : "Start voice input";
 
   return (
     <button
@@ -134,16 +76,9 @@ export function VoiceButton({ onText }: Props) {
       title={ariaLabel}
       aria-label={ariaLabel}
       aria-pressed={isRecording}
-      disabled={isBusy}
       onClick={handleTap}
     >
-      {isBusy ? (
-        <Loader2 size={14} className="spin" aria-hidden="true" />
-      ) : isRecording ? (
-        <MicOff size={14} aria-hidden="true" />
-      ) : (
-        <Mic size={14} aria-hidden="true" />
-      )}
+      {isRecording ? <MicOff size={14} aria-hidden="true" /> : <Mic size={14} aria-hidden="true" />}
     </button>
   );
 }
