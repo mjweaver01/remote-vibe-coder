@@ -14,6 +14,7 @@ interface Flags {
   token: string | null;
   command: string;
   idleTimeoutMs: number | null;
+  domain: string | null;
   help: boolean;
 }
 
@@ -25,6 +26,7 @@ function parseArgs(argv: string[]): Flags {
     token: null,
     command: "claude",
     idleTimeoutMs: null,
+    domain: null,
     help: false,
   };
   let tokenFlagSeen = false;
@@ -81,6 +83,9 @@ function parseArgs(argv: string[]): Flags {
         flags.idleTimeoutMs = mins * 60 * 1000;
         break;
       }
+      case "--domain":
+        flags.domain = next(a);
+        break;
       case "--help":
       case "-h":
         flags.help = true;
@@ -117,6 +122,7 @@ Options:
   -h, --help             Show this help
 `);
 }
+
 
 function lanAddresses(): string[] {
   const out: string[] = [];
@@ -201,7 +207,10 @@ async function main() {
   console.log("");
 
   const urls: string[] = [];
-  if (flags.host === "0.0.0.0") {
+  if (flags.domain) {
+    const base = flags.domain.replace(/\/$/, "");
+    urls.push(`${base}/${flags.token ? `?token=${flags.token}` : ""}`);
+  } else if (flags.host === "0.0.0.0") {
     for (const addr of lanAddresses()) {
       const u = `http://${addr}:${flags.port}/${flags.token ? `?token=${flags.token}` : ""}`;
       urls.push(u);
@@ -221,16 +230,10 @@ async function main() {
     console.log("");
   }
 
-  // QR code for the first URL — handy for phones
-  if (flags.host === "0.0.0.0" && urls.length > 0) {
+  const qrUrl = urls[0];
+  if (qrUrl) {
     console.log(`${yellow}Scan with your phone:${reset}`);
-    qrcode.generate(urls[0]!, { small: true });
-  }
-
-  if (flags.host !== "0.0.0.0" && flags.host !== "localhost" && flags.host !== "127.0.0.1") {
-    // Custom host (e.g. tailscale ip) — QR is still useful
-    console.log(`${yellow}Scan with your phone:${reset}`);
-    qrcode.generate(server.url, { small: true });
+    qrcode.generate(qrUrl, { small: true });
   }
 
   console.log(`${dim}press Ctrl+C to quit${reset}`);

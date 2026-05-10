@@ -90,10 +90,20 @@ function buildUrl(host: string, port: number, token: string | null): string {
   return token ? `${base}?token=${token}` : base;
 }
 
+function getRequestToken(req: IncomingMessage, url: URL): string | null {
+  const query = url.searchParams.get("token");
+  if (query) return query;
+  const cookie = req.headers.cookie ?? "";
+  const match = cookie.match(/(?:^|;\s*)rvc_token=([^;]+)/);
+  return match?.[1] ?? null;
+}
+
 async function handleHttp(req: IncomingMessage, res: ServerResponse, opts: ServerOptions) {
   const url = new URL(req.url ?? "/", "http://x");
+  const provided = getRequestToken(req, url);
 
-  if (!tokensMatch(opts.token, url.searchParams.get("token"))) {
+  const isApi = url.pathname.startsWith("/api/");
+  if (isApi && !tokensMatch(opts.token, provided)) {
     res.writeHead(401, { "content-type": "text/plain" });
     res.end("Unauthorized — append ?token=… to the URL");
     return;
