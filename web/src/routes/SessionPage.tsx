@@ -31,7 +31,7 @@ export function SessionPage() {
   return (
     <main className="page page-session">
       <Topbar
-        leading={<IconButton icon={ArrowLeft} label="Back" size="sm" onClick={() => navigate('/')} />}
+        leading={<IconButton icon={ArrowLeft} label="Back" size="sm" onClick={() => navigate(session?.cwd ? `/p/${encodeURIComponent(session.cwd)}` : '/')} />}
         title={session ? session.cwdLabel : `session ${sessionId.slice(0, 6)}`}
         subtitle={
           session ? (
