@@ -28,7 +28,7 @@ A QR code is printed on startup. Scan it with your phone — the URL includes a 
 - **Multi-viewer sessions**: the PTY is independent of any browser. Multiple devices can attach to the same `sessionId` and watch in real time. New attachers get a 64 KB ring-buffer replay so the screen looks correct on first connect.
 - **Conversation history**: lists past sessions per folder by reading `~/.claude/projects/<encoded-cwd>/*.jsonl`. Click any to resume via `claude --resume <id>`.
 - **VSCode-style files panel**: file tree + Monaco editor (the real one VSCode uses) + git diff vs HEAD.
-- **Voice input**: a microphone button on the keybar that transcribes with Whisper via [transformers.js](https://huggingface.co/docs/transformers.js). Audio never leaves the device — the model runs entirely in the browser.
+- **Voice input**: a microphone button on the keybar that transcribes using the browser's native Web Speech API.
 - **URL-driven state**: every view (folder, picker, session, file path, diff toggle) is encoded in the URL. Browser reload restores you to the exact place.
 - **Mobile-first**: 1/2/3 (yes/no/other) keys are first-class buttons on the keybar; arrow keys, Esc, Tab, Ctrl+C, and a soft-keyboard summon are one tap away.
 
@@ -62,10 +62,6 @@ npm run dev   # builds web bundle, then runs the server with tsx watch
 ```
 
 `npm run build` produces `dist/` (server bundle + bundled web assets + monaco assets).
-
-## Why Node and not Bun
-
-`node-pty` is the canonical PTY library and its libuv I/O handles do not surface events under Bun's runtime — the PTY spawns but `onData`/`onExit` never fire. We use Bun-tier tooling (esbuild) but Node 25+ at runtime so the terminal behaves identically to a real local `claude` session.
 
 ## License
 

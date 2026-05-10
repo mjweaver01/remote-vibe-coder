@@ -28,7 +28,7 @@ Distributed as an npm package: `npx remote-vibe-coder --root ~/Websites`.
 
 ### Server
 
-**Runtime:** Node 25+ (not Bun — `node-pty` events don't fire under Bun's event loop).
+**Runtime:** Node 25+.
 
 The server is a single `http.createServer` instance with a `WebSocketServer` (from `ws`) sharing the same port via `server.on('upgrade')`. There is no Express, no framework. All routing is a chain of `if (url.pathname === ...)` checks in `handleHttp`.
 
@@ -129,6 +129,7 @@ remote-vibe-coder/
 | `EmptyState.tsx`       | Reusable empty/error state: icon + title + optional description + optional action. Accepts `tone="error"`.                                                                                    |
 | `ErrorBoundary.tsx`    | React error boundary wrapping the main outlet.                                                                                                                                                |
 | `FileTree.tsx`         | Lazy-loading recursive file tree. Loads one directory at a time on expand.                                                                                                                    |
+| `GitPanel.tsx`         | Git status panel: staged/unstaged/untracked file lists with stage/unstage actions and commit form.                                                                                            |
 | `IconButton.tsx`       | Square icon-only button with `tone` (default/primary/danger) and `size` (sm/md).                                                                                                              |
 | `Keybar.tsx`           | Terminal key bar. **Desktop:** horizontal scroll strip. **Mobile (≤767px):** gameboy layout — Up arrow left, 1/2/3/Enter diamond centre, secondary controls (Esc/Tab/voice/kbd/Ctrl+C) right. |
 | `LoadingState.tsx`     | Centred spinner + label for async loading states.                                                                                                                                             |
@@ -142,20 +143,22 @@ remote-vibe-coder/
 
 | File             | What it does                                                                                                                                                   |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- |
-| `useAsync.ts`    | `useAsync(producer, deps)` — runs an async function, manages AbortController, returns `{data, error, loading, reload}`. Use for all API fetches in components. |
-| `useSessions.ts` | `useSessions()` → live `SessionInfo[]` from WS. `useSession(id)` → single session or undefined.                                                                |
-| `useToast.ts`    | `useToast().push(tone, message)` — imperative toast API.                                                                                                       |
-| `useWs.ts`       | `useWs()` → `WsClient` instance. Use `.send(msg)` and `.onMessage(cb)` (returns unsub fn).                                                                     |
-| `useWsStatus.ts` | `useWsStatus()` → `'connecting'                                                                                                                                | 'open' | 'closed'`. |
+| `useAsync.ts`           | `useAsync(producer, deps)` — runs an async function, manages AbortController, returns `{data, error, loading, reload}`. Use for all API fetches in components. |
+| `useSessionActivity.ts` | Tracks recent per-session activity for display in session lists.                                                                                               |
+| `useSessions.ts`        | `useSessions()` → live `SessionInfo[]` from WS. `useSession(id)` → single session or undefined.                                                                |
+| `useToast.ts`           | `useToast().push(tone, message)` — imperative toast API.                                                                                                       |
+| `useWs.ts`              | `useWs()` → `WsClient` instance. Use `.send(msg)` and `.onMessage(cb)` (returns unsub fn).                                                                     |
+| `useWsStatus.ts`        | `useWsStatus()` → `'connecting' \| 'open' \| 'closed'`.                                                                                                       |
 
 ### `web/src/lib/`
 
 | File         | What it does                                                                                                                              |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `api.ts`     | Typed REST client. All functions accept `AbortSignal`. Throws `ApiError` on non-2xx.                                                      |
-| `auth.ts`    | `getToken()` reads from URL `?token=` → persists to `sessionStorage`. `withToken(path)` and `wsUrl(path)` append token automatically.     |
-| `monaco.ts`  | `loadMonaco()` — injects AMD loader, returns cached Promise. `languageForFile(name)` maps extension → Monaco language ID.                 |
-| `ws.ts`      | `WsClient` class: auto-reconnect (exponential backoff 500ms→8s), pub-sub for messages/status/sessions. `getWsClient()` returns singleton. |
+| `api.ts`       | Typed REST client. All functions accept `AbortSignal`. Throws `ApiError` on non-2xx.                                                      |
+| `auth.ts`      | `getToken()` reads from URL `?token=` → persists to `sessionStorage`. `withToken(path)` and `wsUrl(path)` append token automatically.     |
+| `favorites.ts` | `getFavorites()` / `toggleFavorite()` — persists starred folders to `localStorage` under `rvc:favorites`.                                 |
+| `monaco.ts`    | `loadMonaco()` — injects AMD loader, returns cached Promise. `languageForFile(name)` maps extension → Monaco language ID.                 |
+| `ws.ts`        | `WsClient` class: auto-reconnect (exponential backoff 500ms→8s), pub-sub for messages/status/sessions. `getWsClient()` returns singleton. |
 
 ---
 
@@ -360,41 +363,7 @@ useEffect(() => {
 
 ---
 
-## Adding a New Feature — Checklist
-
-### New REST endpoint
-
-1. Add handler in `src/server.ts` in the `handleHttp` function chain.
-2. Add any heavy logic to the appropriate `src/*.ts` module (`code.ts` for file ops, `files.ts` for dir ops, etc.).
-3. Add a typed fetcher in `web/src/lib/api.ts` following the existing `json<T>()` pattern. Include an `AbortSignal` parameter.
-4. Use `useAsync` in the consuming component.
-
-### New route
-
-1. Create `web/src/routes/NewPage.tsx`.
-2. Add to `web/src/router.tsx` inside the existing `createBrowserRouter` tree.
-3. Add navigation from wherever the user would trigger it.
-4. All navigation state belongs in the URL — use `useSearchParams` or route params, not component state, for anything that should survive a reload.
-
-### New component
-
-1. Create in `web/src/components/`.
-2. If it needs a new Lucide icon, add it to `icons.ts` first.
-3. Style in `styles.css` using existing tokens.
-4. Props typed inline with an `interface Props` — no `React.FC<>`, no implicit children.
-
-### New WS message type
-
-1. Add to `src/types.ts` — both the union in `ClientMessage` or `ServerMessage`.
-2. Handle in `server.ts` (`handleClientMessage` switch) or broadcast in `sessions.ts`.
-3. Handle in `web/src/lib/ws.ts` or in the consuming component's `ws.onMessage`.
-
----
-
 ## Key Design Decisions
-
-**Why Node, not Bun?**  
-`node-pty` uses libuv I/O handles. Under Bun's event loop these handles never fire — `onData` / `onExit` callbacks are never called. The PTY spawns but produces no output. Node 25+ is required at runtime. Bun-tier tooling (esbuild, Vite) is fine for build-time.
 
 **Why no framework for the server?**  
 The HTTP surface is small (6 GET endpoints + WS upgrade). Adding Express or Fastify adds ~1 MB to the installed footprint for zero benefit.
