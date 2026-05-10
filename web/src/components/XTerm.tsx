@@ -78,12 +78,16 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
 
     const ro = new ResizeObserver(() => fitNow());
     ro.observe(container);
-    requestAnimationFrame(fitNow);
+    // Double rAF ensures fit runs after layout is painted; timeout covers
+    // mobile browsers that settle dvh/safe-area after the first frame.
+    requestAnimationFrame(() => requestAnimationFrame(fitNow));
+    const fitTimer = setTimeout(fitNow, 150);
 
     termRef.current = term;
     fitRef.current = fit;
 
     return () => {
+      clearTimeout(fitTimer);
       ro.disconnect();
       dataDispose.dispose();
       term.dispose();
