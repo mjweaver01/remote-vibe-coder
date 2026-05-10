@@ -39,10 +39,7 @@ export function SessionFiles() {
   const rawTabs = params.getAll("tabs");
   const openTabs = filePath && !rawTabs.includes(filePath) ? [...rawTabs, filePath] : rawTabs;
 
-  const gitStatus = useAsync(
-    (signal) => fetchGitStatus(session.cwd, signal),
-    [session.cwd]
-  );
+  const gitStatus = useAsync((signal) => fetchGitStatus(session.cwd, signal), [session.cwd]);
   const changedPaths = gitStatus.data?.inGit
     ? new Set([
         ...gitStatus.data.staged.map((f) => f.path),

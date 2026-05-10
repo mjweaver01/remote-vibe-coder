@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import {
+  AudioWaveform,
   ChevronRight,
   Folder,
   History,
@@ -61,7 +62,11 @@ export function BrowserPage() {
 
   return (
     <main className="page page-browser">
-      <Topbar title="remote-vibe-coder" subtitle={data ? data.cwdLabel : (path ?? "")} />
+      <Topbar
+        leading={<AudioWaveform size={20} color="var(--accent)" aria-hidden="true" />}
+        title="remote-vibe-coder"
+        subtitle={data ? data.cwdLabel : (path ?? "")}
+      />
       <div className="page-body">
         {loading && !data ? <LoadingState label="Reading folder…" /> : null}
 

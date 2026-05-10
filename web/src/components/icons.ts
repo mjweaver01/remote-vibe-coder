@@ -3,6 +3,7 @@
 
 export {
   AlertCircle,
+  AudioWaveform,
   ArrowLeft,
   Check,
   GitBranch,
