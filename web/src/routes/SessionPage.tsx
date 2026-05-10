@@ -23,6 +23,8 @@ export function SessionPage() {
   const handleKill = () => {
     if (window.confirm('Kill this Claude session?')) {
       ws.send({ type: 'kill', sessionId });
+      const cwd = session?.cwd;
+      navigate(cwd ? `/p/${encodeURIComponent(cwd)}` : '/');
     }
   };
 

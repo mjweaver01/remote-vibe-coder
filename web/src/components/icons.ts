@@ -4,6 +4,7 @@
 export {
   AlertCircle,
   ArrowLeft,
+  Search,
   ArrowUp,
   ArrowDown,
   ArrowRight,

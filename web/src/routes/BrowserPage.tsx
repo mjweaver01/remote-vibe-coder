@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { ChevronRight, Folder, History, Inbox, SquareTerminal } from '../components/icons.ts';
+import { ChevronRight, Folder, History, Inbox, Search, SquareTerminal, X } from '../components/icons.ts';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { LoadingState } from '../components/LoadingState.tsx';
 import { Topbar } from '../components/Topbar.tsx';
@@ -15,23 +15,31 @@ export function BrowserPage() {
   const path = params.get(PATH_PARAM) ?? undefined;
   const navigate = useNavigate();
   const sessions = useSessions();
+  const [query, setQuery] = useState('');
 
   const { data, error, loading, reload } = useAsync(
     (signal) => fetchFolders(path, signal),
     [path],
   );
 
-  // Keep the page title in sync
   useEffect(() => {
     if (data) document.title = `${data.cwdLabel} · remote-vibe-coder`;
     else document.title = 'remote-vibe-coder';
   }, [data]);
+
+  // Clear filter when navigating to a different folder
+  useEffect(() => { setQuery(''); }, [path]);
 
   const navigateTo = (next: string) => {
     const sp = new URLSearchParams();
     sp.set(PATH_PARAM, next);
     setParams(sp);
   };
+
+  const q = query.trim().toLowerCase();
+  const visibleEntries = q
+    ? (data?.entries ?? []).filter((e) => e.name.toLowerCase().includes(q))
+    : (data?.entries ?? []);
 
   return (
     <main className="page page-browser">
@@ -77,7 +85,30 @@ export function BrowserPage() {
             ) : null}
 
             <section className="rows">
-              <div className="rows-title">{data.cwdLabel}</div>
+              <div className="rows-title">
+                <span>{data.cwdLabel}</span>
+                <div className="browser-search-wrap">
+                  <Search size={12} className="browser-search-icon" aria-hidden="true" />
+                  <input
+                    type="search"
+                    className="browser-search-input"
+                    placeholder="Filter…"
+                    value={query}
+                    onChange={(e) => setQuery(e.currentTarget.value)}
+                    aria-label="Filter folders"
+                  />
+                  {query ? (
+                    <button
+                      type="button"
+                      className="browser-search-clear"
+                      onClick={() => setQuery('')}
+                      aria-label="Clear filter"
+                    >
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
 
               {data.parent ? (
                 <button className="row" onClick={() => navigateTo(data.parent!)}>
@@ -95,8 +126,14 @@ export function BrowserPage() {
                   title="No subfolders"
                   description="This folder has no child directories. Try drilling into a sibling, or pass --root to choose a different starting point."
                 />
+              ) : visibleEntries.length === 0 ? (
+                <EmptyState
+                  icon={Search}
+                  title="No matches"
+                  description={`No folders contain "${query}"`}
+                />
               ) : (
-                data.entries.map((e) => (
+                visibleEntries.map((e) => (
                   <div key={e.path} className="row row-folder">
                     <button
                       type="button"
