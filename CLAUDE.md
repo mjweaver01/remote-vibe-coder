@@ -80,8 +80,8 @@ remote-vibe-coder/
 │
 ├── web/                        # React SPA (Vite project root)
 │   ├── index.html              # Single shell; script type=module → /assets/app.js
-│   ├── styles.css              # Hand-rolled mobile-first dark CSS; no Tailwind
 │   └── src/
+│       ├── styles.css          # Hand-rolled mobile-first dark CSS; no Tailwind
 │       ├── main.tsx            # createRoot → RouterProvider
 │       ├── router.tsx          # createBrowserRouter — route definitions
 │       ├── App.tsx             # WsProvider > ToastProvider > app-shell > Outlet
@@ -145,7 +145,7 @@ remote-vibe-coder/
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ---------- |
 | `useAsync.ts`           | `useAsync(producer, deps)` — runs an async function, manages AbortController, returns `{data, error, loading, reload}`. Use for all API fetches in components. |
 | `useSessionActivity.ts` | Tracks recent per-session activity for display in session lists.                                                                                               |
-| `useSessions.ts`        | `useSessions()` → live `SessionInfo[]` from WS. `useSession(id)` → single session or undefined.                                                                |
+| `useSessions.ts`        | `useSessions()` → live `SessionInfo[]` from WS. `useSession(id)` → single session or `null`.                                                                   |
 | `useToast.ts`           | `useToast().push(tone, message)` — imperative toast API.                                                                                                       |
 | `useWs.ts`              | `useWs()` → `WsClient` instance. Use `.send(msg)` and `.onMessage(cb)` (returns unsub fn).                                                                     |
 | `useWsStatus.ts`        | `useWsStatus()` → `'connecting' \| 'open' \| 'closed'`.                                                                                                       |
