@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, MicOff } from "./icons.ts";
+import { Mic } from "./icons.ts";
 import { useToast } from "../hooks/useToast.ts";
 
 interface Props {
@@ -42,11 +42,8 @@ export function VoiceButton({ onText }: Props) {
     setSupported(!!getSpeechRecognition());
   }, []);
 
-  const handleTap = () => {
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      return;
-    }
+  const startRecording = () => {
+    if (isRecording) return;
 
     const SR = getSpeechRecognition();
     if (!SR) return;
@@ -76,24 +73,30 @@ export function VoiceButton({ onText }: Props) {
     setIsRecording(true);
   };
 
+  const stopRecording = () => {
+    recognitionRef.current?.stop();
+  };
+
   if (!supported) return null;
 
   const cls = ["keybar-btn", "keybar-btn-voice", isRecording ? "is-recording" : ""]
     .filter(Boolean)
     .join(" ");
 
-  const ariaLabel = isRecording ? "Stop recording" : "Start voice input";
-
   return (
     <button
       type="button"
       className={cls}
-      title={ariaLabel}
-      aria-label={ariaLabel}
+      title={isRecording ? "Release to send" : "Hold to speak"}
+      aria-label={isRecording ? "Release to send" : "Hold to speak"}
       aria-pressed={isRecording}
-      onClick={handleTap}
+      onPointerDown={startRecording}
+      onPointerUp={stopRecording}
+      onPointerCancel={stopRecording}
+      onPointerLeave={stopRecording}
+      style={{ touchAction: "none" }}
     >
-      {isRecording ? <MicOff size={14} aria-hidden="true" /> : <Mic size={14} aria-hidden="true" />}
+      <Mic size={14} aria-hidden="true" />
     </button>
   );
 }

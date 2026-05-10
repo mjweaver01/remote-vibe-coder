@@ -95,7 +95,6 @@ export function SessionTerminal() {
     };
   }, [ws, sessionId]);
 
-  const summonKeyboard = () => kbdTrapRef.current?.focus();
   const sendKey = (data: string) => ws.send({ type: "input", sessionId, data });
   const sendVoiceText = (text: string) => ws.send({ type: "input", sessionId, data: text });
 
@@ -129,7 +128,6 @@ export function SessionTerminal() {
       </form>
       <Keybar
         onSend={sendKey}
-        onSummonKeyboard={summonKeyboard}
         voiceSlot={<VoiceButton onText={sendVoiceText} />}
       />
       <input

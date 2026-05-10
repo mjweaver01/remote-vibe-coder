@@ -740,22 +740,6 @@ button:focus-visible {
   backdrop-filter: blur(8px);
 }
 
-/* Desktop: horizontal scroll strip */
-.keybar-desktop {
-  display: flex;
-  gap: 6px;
-  padding: 6px 6px calc(6px + var(--safe-bottom));
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.keybar-desktop::-webkit-scrollbar {
-  display: none;
-}
-
-/* Mobile: gameboy hidden by default, shown via media query below */
-.keybar-mobile {
-  display: none;
-}
 
 .keybar-btn {
   flex: 0 0 auto;
@@ -814,153 +798,175 @@ button:focus-visible {
   }
 }
 
-/* ----- Gameboy layout (mobile only) ----- */
-@media (max-width: 767px) {
-  .keybar-desktop {
-    display: none;
-  }
+/* ----- Gameboy layout ----- */
+.keybar-mobile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 3vw, 16px);
+  padding: 14px clamp(12px, 4vw, 18px) calc(14px + var(--safe-bottom));
+  max-height: 320px;
+}
 
-  .keybar-mobile {
-    display: flex;
-    align-items: center;
-    gap: clamp(8px, 3vw, 14px);
-    padding: 12px clamp(10px, 3.5vw, 14px) calc(12px + var(--safe-bottom));
-  }
+/* Answer diamond — 1 top · 2 left · 3 right · mic bottom */
+.gb-diamond {
+  width: 100%;
+  max-width: 160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-areas:
+    ". y1 ."
+    "y2 hub y3"
+    ". en .";
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: clamp(5px, 1.5vw, 8px);
+  aspect-ratio: 1;
+}
+.gb-diamond-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(14px, 4vw, 18px);
+  font-weight: 700;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.gb-diamond-btn:active {
+  filter: brightness(1.3);
+}
+.gb-diamond-hub {
+  grid-area: hub;
+  background: #0d0d10;
+  border: 1px solid #1a1a20;
+  border-radius: 50%;
+  margin: 18%;
+}
+.gb-btn-yes {
+  grid-area: y1;
+  background: var(--success-soft);
+  border-color: rgba(109, 209, 122, 0.45);
+  color: var(--success);
+}
+.gb-btn-no {
+  grid-area: y2;
+  background: var(--danger-soft);
+  border-color: rgba(255, 93, 108, 0.4);
+  color: var(--danger);
+}
+.gb-btn-other {
+  grid-area: y3;
+  background: var(--accent-soft);
+  border-color: rgba(255, 138, 76, 0.4);
+  color: var(--accent);
+}
+/* Mic in diamond bottom slot — VoiceButton fills the cell */
+.gb-diamond-mic {
+  grid-area: en;
+  display: flex;
+}
+.gb-diamond-mic .keybar-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  height: auto;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid rgba(255, 138, 76, 0.4);
+  color: var(--accent);
+}
+.gb-diamond-mic .keybar-btn.is-recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  animation: pulse-border 0.8s ease-in-out infinite;
+}
+@keyframes pulse-border {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 93, 108, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(255, 93, 108, 0); }
+}
 
-  /* Far-left Up button */
-  .gb-up {
-    flex: 0 0 auto;
-    width: clamp(44px, 14vw, 58px);
-    height: clamp(44px, 14vw, 58px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #1c1c22;
-    border: 1px solid var(--border-strong);
-    border-radius: 14px;
-    color: var(--text);
-    cursor: pointer;
-    align-self: center;
-  }
-  .gb-up:active {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
+/* A/B action buttons — Enter + Esc, spans bottom of both columns */
+.gb-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: row;
+  gap: clamp(12px, 4vw, 20px);
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 4px;
+}
+.gb-action-btn {
+  width: min(22vw, 80px);
+  height: min(10vw, 38px);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.gb-action-btn:active {
+  filter: brightness(1.3);
+}
+.gb-action-enter {
+  background: var(--accent-soft);
+  border-color: rgba(255, 138, 76, 0.4);
+  color: var(--accent);
+}
+.gb-action-esc {
+  background: #1c1c22;
+  border-color: var(--border-strong);
+  color: var(--text-dim);
+  font-size: min(2.5vw, 11px);
+  font-weight: 600;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  letter-spacing: 0.02em;
+}
 
-  /* Answer diamond — 1 top · 2 left · 3 right · Enter bottom */
-  .gb-diamond {
-    flex: 0 0 auto;
-    display: grid;
-    grid-template-areas:
-      ". y1 ."
-      "y2 hub y3"
-      ". en .";
-    grid-template-columns: repeat(3, clamp(44px, 13vw, 56px));
-    grid-template-rows: repeat(3, clamp(44px, 13vw, 56px));
-    gap: clamp(3px, 1vw, 5px);
-  }
-  .gb-diamond-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: clamp(14px, 4vw, 18px);
-    font-weight: 700;
-    border-radius: 14px;
-    cursor: pointer;
-    border: 1px solid transparent;
-  }
-  .gb-diamond-btn:active {
-    filter: brightness(1.3);
-  }
-  .gb-diamond-hub {
-    grid-area: hub;
-    background: #0d0d10;
-    border: 1px solid #1a1a20;
-    border-radius: 50%;
-    margin: 14px;
-  }
-  .gb-btn-yes {
-    grid-area: y1;
-    background: var(--success-soft);
-    border-color: rgba(109, 209, 122, 0.45);
-    color: var(--success);
-  }
-  .gb-btn-no {
-    grid-area: y2;
-    background: var(--danger-soft);
-    border-color: rgba(255, 93, 108, 0.4);
-    color: var(--danger);
-  }
-  .gb-btn-other {
-    grid-area: y3;
-    background: var(--accent-soft);
-    border-color: rgba(255, 138, 76, 0.4);
-    color: var(--accent);
-  }
-  .gb-btn-enter {
-    grid-area: en;
-    background: #1c1c22;
-    border-color: var(--border-strong);
-    color: var(--text);
-  }
-
-  /* Secondary controls */
-  .gb-secondary {
-    flex: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-    align-content: center;
-  }
-  .gb-sec-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: clamp(34px, 10vw, 40px);
-    min-width: 0;
-    padding: 0;
-    font-size: clamp(11px, 3vw, 12px);
-    font-weight: 600;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    background: #1c1c22;
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
-    color: var(--text-dim);
-    cursor: pointer;
-    letter-spacing: 0.02em;
-  }
-  .gb-sec-btn:active {
-    background: var(--bg-3);
-    color: var(--text);
-    border-color: var(--border-strong);
-  }
-  /* VoiceButton inherits keybar-btn — override to fit secondary grid */
-  .gb-secondary .keybar-btn {
-    height: clamp(34px, 10vw, 40px);
-    min-width: 0;
-    padding: 0;
-    flex: none;
-    width: 100%;
-    font-size: clamp(11px, 3vw, 12px);
-    border-radius: 10px;
-    background: #1c1c22;
-    border-color: var(--border-strong);
-    color: var(--text-dim);
-  }
-  .gb-secondary .keybar-btn-voice.is-recording {
-    background: var(--danger);
-    border-color: var(--danger);
-    color: #160506;
-  }
-  .gb-sec-kill {
-    color: var(--danger);
-    border-color: rgba(255, 93, 108, 0.3);
-  }
-  /* Ctrl+C spans both columns when voice is present (5 items → odd last row) */
-  .gb-sec-span {
-    grid-column: 1 / -1;
-  }
+/* D-pad cross — Up top · Tab left · Kill right · Clear bottom */
+.gb-dpad {
+  width: 100%;
+  max-width: 160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-areas:
+    ". up ."
+    "tab hub kill"
+    ". clr .";
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: clamp(5px, 1.5vw, 8px);
+  aspect-ratio: 1;
+}
+.gb-dpad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1c1c22;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: clamp(9px, 2.5vw, 11px);
+  font-weight: 600;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.gb-dpad-btn:active {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.gb-dpad-up   { grid-area: up; }
+.gb-dpad-tab  { grid-area: tab; }
+.gb-dpad-kill { grid-area: kill; color: var(--danger); border-color: rgba(255, 93, 108, 0.3); }
+.gb-dpad-clr  { grid-area: clr; }
+.gb-dpad-hub {
+  grid-area: hub;
+  background: #0d0d10;
+  border: 1px solid #1a1a20;
+  border-radius: 50%;
+  margin: 20%;
 }
 
 /* ----- Files pane ----- */
