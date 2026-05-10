@@ -22,7 +22,7 @@ Distributed as an npm package: `npx remote-vibe-coder --root ~/Websites`.
 │  React 19 SPA           │                     │  http.createServer                │
 │  xterm.js terminal      │                     │  WebSocketServer (ws)             │
 │  Monaco editor          │                     │  SessionManager (node-pty)        │
-│  Whisper transcription  │                     │  REST API: /api/*                 │
+│  Voice input (Web API)  │                     │  REST API: /api/*                 │
 └─────────────────────────┘                     └───────────────────────────────────┘
 ```
 
@@ -55,7 +55,7 @@ Static assets are served from `dist/web/` (built by Vite). Any unrecognised path
 | Icons          | Lucide React                                   | Consistent; tree-shakeable; no emoji/unicode                      |
 | Terminal       | `@xterm/xterm` + FitAddon + WebLinksAddon      | Real xterm.js — same renderer Claude Code uses                    |
 | Code editor    | Monaco (AMD loader via `min/vs/loader.js`)     | VSCode's editor; lazy-loaded on first Files tab open              |
-| Voice          | `@huggingface/transformers` (Whisper tiny.en)  | On-device; audio never leaves the browser                         |
+| Voice          | Web Speech API (`SpeechRecognition`)           | Native browser API; no model download, no external dependency     |
 | Formatting     | Prettier                                       | See `.prettierrc` — 2-space, double quotes, 100-char lines        |
 | Types          | TypeScript strict + `noUncheckedIndexedAccess` | Catches index-access bugs at compile time                         |
 
@@ -88,7 +88,7 @@ remote-vibe-coder/
 │       ├── routes/             # One component per route (see Route Map below)
 │       ├── components/         # Shared UI components (see Component Inventory below)
 │       ├── hooks/              # Custom React hooks
-│       ├── lib/                # Pure TS modules (api, ws, auth, monaco, whisper)
+│       ├── lib/                # Pure TS modules (api, ws, auth, monaco)
 │       └── providers/          # WsProvider, ToastProvider (React context)
 │
 ├── vite.config.ts              # Vite config (root: web/, outDir: dist/web/)
@@ -135,7 +135,7 @@ remote-vibe-coder/
 | `MonacoCode.tsx`       | Monaco editor wrapper. Accepts `code` (plain) or `diff: {original, modified}` (DiffEditor). AMD loader injected once; cached Promise.                                                         |
 | `Topbar.tsx`           | Page header: leading slot, title/subtitle, trailing slot. Sticky, safe-area-aware.                                                                                                            |
 | `ToastViewport.tsx`    | Fixed toast container (bottom-right on desktop, full-width on mobile).                                                                                                                        |
-| `VoiceButton.tsx`      | Mic button: records via MediaRecorder → Whisper tiny.en → calls `onText(transcript)`. On-device only.                                                                                         |
+| `VoiceButton.tsx`      | Mic button: uses browser Web Speech API (`SpeechRecognition`/`webkitSpeechRecognition`) → calls `onText(transcript)`. Hidden when API is unsupported.                                         |
 | `XTerm.tsx`            | `forwardRef` xterm.js wrapper. `ResizeObserver` drives `FitAddon.fit()`. Exposes `focus/fit/write` via ref.                                                                                   |
 
 ### `web/src/hooks/`
@@ -155,7 +155,6 @@ remote-vibe-coder/
 | `api.ts`     | Typed REST client. All functions accept `AbortSignal`. Throws `ApiError` on non-2xx.                                                      |
 | `auth.ts`    | `getToken()` reads from URL `?token=` → persists to `sessionStorage`. `withToken(path)` and `wsUrl(path)` append token automatically.     |
 | `monaco.ts`  | `loadMonaco()` — injects AMD loader, returns cached Promise. `languageForFile(name)` maps extension → Monaco language ID.                 |
-| `whisper.ts` | `transcribe(blob)` — loads model on first call (cached in IndexedDB), resamples audio to 16kHz mono Float32, runs inference.              |
 | `ws.ts`      | `WsClient` class: auto-reconnect (exponential backoff 500ms→8s), pub-sub for messages/status/sessions. `getWsClient()` returns singleton. |
 
 ---
@@ -408,9 +407,6 @@ Full replay would be unbounded memory per session. 64 KB is enough to reconstruc
 
 **Why Monaco via AMD loader instead of the npm package?**  
 The Monaco npm package requires bundler-specific configuration and produces very large chunks. The AMD approach (copying `node_modules/monaco-editor/min/vs/` to `dist/web/assets/vs/`) is the officially supported pattern and produces the smallest runtime footprint. It lazy-loads on the first Files tab open.
-
-**Why Whisper tiny.en in the browser?**  
-Audio privacy. The model (~40 MB, cached in IndexedDB after first download) runs inference locally via `@huggingface/transformers`. No audio data leaves the device.
 
 **Why hand-rolled CSS?**  
 The total CSS is ~1300 lines. Tailwind's overhead (PostCSS, JIT, purge config) is unjustified at this scale. Dark theme with a small token set is straightforward to maintain directly.
