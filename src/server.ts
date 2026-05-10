@@ -4,6 +4,7 @@ import { extname, join, resolve } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
 import { tokensMatch } from "./auth.ts";
 import { gitDiff, listTree, readFileSafe } from "./code.ts";
+import { gitStatus, gitStage, gitUnstage, gitCommit } from "./git.ts";
 import { listFolders } from "./files.ts";
 import { listPastSessions } from "./history.ts";
 import { SessionManager, type ViewerSink } from "./sessions.ts";
@@ -192,7 +193,80 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse, opts: Serve
     return;
   }
 
+  if (url.pathname === "/api/git/status") {
+    const path = url.searchParams.get("path");
+    if (!path) {
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: "missing path" }));
+      return;
+    }
+    try {
+      const result = await gitStatus(path, opts.root);
+      res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: msg }));
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/git/stage" && req.method === "POST") {
+    try {
+      const body = await readBody(req);
+      const { files } = JSON.parse(body) as { files: string[] };
+      await gitStage(files, opts.root);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: msg }));
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/git/unstage" && req.method === "POST") {
+    try {
+      const body = await readBody(req);
+      const { files } = JSON.parse(body) as { files: string[] };
+      await gitUnstage(files, opts.root);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: msg }));
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/git/commit" && req.method === "POST") {
+    try {
+      const body = await readBody(req);
+      const { cwd, message } = JSON.parse(body) as { cwd: string; message: string };
+      const result = await gitCommit(cwd, message, opts.root);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify(result));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.writeHead(400, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: msg }));
+    }
+    return;
+  }
+
   await serveStatic(url.pathname, opts.staticDir, res);
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c: Buffer) => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
 }
 
 async function serveStatic(pathname: string, staticDir: string, res: ServerResponse) {

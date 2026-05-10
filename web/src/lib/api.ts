@@ -110,3 +110,56 @@ export interface ServerConfig {
 export function fetchConfig(signal?: AbortSignal): Promise<ServerConfig> {
   return json<ServerConfig>("/api/config", signal);
 }
+
+// ---------- Git ----------
+
+export interface GitFileStatus {
+  path: string;
+  relPath: string;
+  indexStatus: string;
+  workingStatus: string;
+}
+
+export interface GitStatusResult {
+  inGit: boolean;
+  root: string | null;
+  branch: string | null;
+  staged: GitFileStatus[];
+  unstaged: GitFileStatus[];
+  untracked: GitFileStatus[];
+}
+
+export function fetchGitStatus(cwd: string, signal?: AbortSignal): Promise<GitStatusResult> {
+  return json<GitStatusResult>(`/api/git/status?path=${encodeURIComponent(cwd)}`, signal);
+}
+
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(withToken(path), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const b = await res.json();
+      detail = b?.error ?? "";
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    throw new ApiError(res.status, detail || `HTTP ${res.status}`);
+  }
+  return (await res.json()) as T;
+}
+
+export function postGitStage(files: string[]): Promise<{ ok: boolean }> {
+  return post<{ ok: boolean }>("/api/git/stage", { files });
+}
+
+export function postGitUnstage(files: string[]): Promise<{ ok: boolean }> {
+  return post<{ ok: boolean }>("/api/git/unstage", { files });
+}
+
+export function postGitCommit(cwd: string, message: string): Promise<{ hash: string }> {
+  return post<{ hash: string }>("/api/git/commit", { cwd, message });
+}

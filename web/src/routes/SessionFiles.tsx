@@ -1,7 +1,17 @@
 import { useOutletContext, useSearchParams } from "react-router";
-import { ChevronLeft, Code2, FileCode2, GitCompare, Inbox, Menu } from "../components/icons.ts";
+import {
+  ChevronLeft,
+  Code2,
+  FileCode2,
+  File,
+  GitBranch,
+  GitCompare,
+  Inbox,
+  Menu,
+} from "../components/icons.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { FileTree } from "../components/FileTree.tsx";
+import { GitPanel } from "../components/GitPanel.tsx";
 import { MonacoCode } from "../components/MonacoCode.tsx";
 import { useAsync } from "../hooks/useAsync.ts";
 import { fetchDiff, fetchFile } from "../lib/api.ts";
@@ -12,10 +22,13 @@ interface OutletCtx {
   session: SessionInfo;
 }
 
+type SidebarMode = "explorer" | "source-control";
+
 export function SessionFiles() {
   const { session } = useOutletContext<OutletCtx>();
   const [params, setParams] = useSearchParams();
   const [treeOpen, setTreeOpen] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("explorer");
 
   const filePath = params.get("file");
   const isDiff = params.get("view") === "diff";
@@ -32,6 +45,8 @@ export function SessionFiles() {
   const setFile = (path: string) => {
     const sp = new URLSearchParams(params);
     sp.set("file", path);
+    // When clicking a file from Source Control, auto-show diff
+    if (sidebarMode === "source-control") sp.set("view", "diff");
     setParams(sp, { replace: false });
     setTreeOpen(false);
   };
@@ -144,6 +159,22 @@ export function SessionFiles() {
         </div>
         <button
           type="button"
+          className={`btn${sidebarMode === "source-control" ? " is-active" : ""}`}
+          onClick={() =>
+            setSidebarMode((m) => (m === "source-control" ? "explorer" : "source-control"))
+          }
+          title={sidebarMode === "source-control" ? "Show file explorer" : "Show source control"}
+          aria-pressed={sidebarMode === "source-control"}
+        >
+          {sidebarMode === "source-control" ? (
+            <File size={14} aria-hidden="true" />
+          ) : (
+            <GitBranch size={14} aria-hidden="true" />
+          )}
+          <span>{sidebarMode === "source-control" ? "Explorer" : "Changes"}</span>
+        </button>
+        <button
+          type="button"
           className={`btn${isDiff ? " is-active" : ""}`}
           disabled={!filePath}
           onClick={toggleDiff}
@@ -160,7 +191,15 @@ export function SessionFiles() {
 
       <div className={`files-body${treeOpen ? " tree-open" : ""}`}>
         <aside className="files-tree">
-          <FileTree rootPath={session.cwd} selectedPath={filePath} onSelectFile={setFile} />
+          {sidebarMode === "source-control" ? (
+            <GitPanel
+              cwd={session.cwd}
+              onSelectFile={setFile}
+              selectedPath={filePath}
+            />
+          ) : (
+            <FileTree rootPath={session.cwd} selectedPath={filePath} onSelectFile={setFile} />
+          )}
         </aside>
         <main className="files-viewer">{viewerNode}</main>
       </div>

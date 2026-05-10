@@ -4,6 +4,10 @@
 export {
   AlertCircle,
   ArrowLeft,
+  Check,
+  GitBranch,
+  GitCommit,
+  Minus,
   Search,
   ArrowUp,
   ArrowDown,
