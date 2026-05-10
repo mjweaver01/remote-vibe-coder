@@ -7,6 +7,7 @@ import {
   Inbox,
   Search,
   SquareTerminal,
+  Star,
   X,
 } from "../components/icons.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
@@ -15,6 +16,7 @@ import { Topbar } from "../components/Topbar.tsx";
 import { useAsync } from "../hooks/useAsync.ts";
 import { useSessions } from "../hooks/useSessions.ts";
 import { fetchFolders } from "../lib/api.ts";
+import { getFavorites, isFavorite, toggleFavorite, type Favorite } from "../lib/favorites.ts";
 
 const PATH_PARAM = "path";
 
@@ -24,6 +26,7 @@ export function BrowserPage() {
   const navigate = useNavigate();
   const sessions = useSessions();
   const [query, setQuery] = useState("");
+  const [favorites, setFavorites] = useState<Favorite[]>(() => getFavorites());
 
   const { data, error, loading, reload } = useAsync((signal) => fetchFolders(path, signal), [path]);
 
@@ -41,6 +44,12 @@ export function BrowserPage() {
     const sp = new URLSearchParams();
     sp.set(PATH_PARAM, next);
     setParams(sp);
+  };
+
+  const handleToggleFavorite = (entryPath: string, label: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFavorite(entryPath, label);
+    setFavorites(getFavorites());
   };
 
   const q = query.trim().toLowerCase();
@@ -84,6 +93,47 @@ export function BrowserPage() {
                     </div>
                     <ChevronRight size={16} className="row-chev" aria-hidden="true" />
                   </Link>
+                ))}
+              </section>
+            ) : null}
+
+            {favorites.length > 0 ? (
+              <section className="rows">
+                <div className="rows-title">Favorites</div>
+                {favorites.map((fav) => (
+                  <div key={fav.path} className="row row-folder">
+                    <button
+                      type="button"
+                      className="row-press"
+                      onClick={() => navigateTo(fav.path)}
+                    >
+                      <Folder size={18} className="row-icon" aria-hidden="true" />
+                      <div className="row-body">
+                        <div className="row-name">{fav.label}</div>
+                        <div className="row-meta">{fav.path}</div>
+                      </div>
+                      <ChevronRight size={16} className="row-chev" aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="row-action row-star is-starred"
+                      title="Remove from favorites"
+                      onClick={(e) => handleToggleFavorite(fav.path, fav.label, e)}
+                      aria-label="Remove from favorites"
+                      aria-pressed={true}
+                    >
+                      <Star size={14} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="row-action"
+                      title="Open or resume in this folder"
+                      onClick={() => navigate(`/p/${encodeURIComponent(fav.path)}`)}
+                    >
+                      <History size={14} aria-hidden="true" />
+                      <span>Open</span>
+                    </button>
+                  </div>
                 ))}
               </section>
             ) : null}
@@ -137,26 +187,39 @@ export function BrowserPage() {
                   description={`No folders contain "${query}"`}
                 />
               ) : (
-                visibleEntries.map((e) => (
-                  <div key={e.path} className="row row-folder">
-                    <button type="button" className="row-press" onClick={() => navigateTo(e.path)}>
-                      <Folder size={18} className="row-icon" aria-hidden="true" />
-                      <div className="row-body">
-                        <div className="row-name">{e.name}</div>
-                      </div>
-                      <ChevronRight size={16} className="row-chev" aria-hidden="true" />
-                    </button>
-                    <button
-                      type="button"
-                      className="row-action"
-                      title="Open or resume in this folder"
-                      onClick={() => navigate(`/p/${encodeURIComponent(e.path)}`)}
-                    >
-                      <History size={14} aria-hidden="true" />
-                      <span>Open</span>
-                    </button>
-                  </div>
-                ))
+                visibleEntries.map((e) => {
+                  const starred = isFavorite(e.path);
+                  return (
+                    <div key={e.path} className="row row-folder">
+                      <button type="button" className="row-press" onClick={() => navigateTo(e.path)}>
+                        <Folder size={18} className="row-icon" aria-hidden="true" />
+                        <div className="row-body">
+                          <div className="row-name">{e.name}</div>
+                        </div>
+                        <ChevronRight size={16} className="row-chev" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className={`row-action row-star${starred ? " is-starred" : ""}`}
+                        title={starred ? "Remove from favorites" : "Add to favorites"}
+                        onClick={(evt) => handleToggleFavorite(e.path, e.name, evt)}
+                        aria-label={starred ? "Remove from favorites" : "Add to favorites"}
+                        aria-pressed={starred}
+                      >
+                        <Star size={14} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        className="row-action"
+                        title="Open or resume in this folder"
+                        onClick={() => navigate(`/p/${encodeURIComponent(e.path)}`)}
+                      >
+                        <History size={14} aria-hidden="true" />
+                        <span>Open</span>
+                      </button>
+                    </div>
+                  );
+                })
               )}
             </section>
           </>

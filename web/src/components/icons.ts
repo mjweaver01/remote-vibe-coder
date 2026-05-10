@@ -37,5 +37,6 @@ export {
   Skull,
   SquareTerminal,
   Trash2,
+  Star,
   X,
 } from "lucide-react";

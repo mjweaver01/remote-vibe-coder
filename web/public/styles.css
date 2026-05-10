@@ -526,6 +526,7 @@ button:focus-visible {
 }
 .row-folder .row-action {
   flex: 0 0 auto;
+  align-self: center;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -540,6 +541,28 @@ button:focus-visible {
 }
 .row-folder .row-action:hover {
   background: rgba(255, 138, 76, 0.22);
+}
+.row-folder .row-star {
+  background: transparent;
+  border-color: transparent;
+  color: var(--border-strong);
+  opacity: 0;
+  transition: opacity 120ms, color 120ms;
+  padding: 6px 8px;
+}
+.row-folder:hover .row-star,
+.row-folder .row-star.is-starred {
+  opacity: 1;
+}
+.row-folder .row-star.is-starred {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(255, 138, 76, 0.3);
+}
+.row-folder .row-star:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(255, 138, 76, 0.3);
 }
 .row-session {
   background: linear-gradient(180deg, rgba(255, 138, 76, 0.05), transparent);
