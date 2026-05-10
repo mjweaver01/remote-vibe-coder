@@ -1,5 +1,11 @@
 // Build script — invoked via `tsx src/build.ts`. Uses esbuild for speed.
-// Produces dist/cli.js (Node ESM) + dist/web/{index.html,styles.css,assets/...}
+// Produces:
+//   dist/cli.js                  — Node ESM server bundle
+//   dist/web/index.html          — single-page shell
+//   dist/web/styles.css          — global styles
+//   dist/web/assets/app.js       — React app bundle
+//   dist/web/assets/xterm.css    — xterm.js base styles
+//   dist/web/assets/monaco/vs/*  — monaco-editor AMD distribution
 
 import {
   chmodSync,
@@ -35,7 +41,6 @@ async function buildServer() {
     bundle: true,
     sourcemap: true,
     logLevel: 'warning',
-    // node-pty has native bindings; ws is heavyweight — keep external.
     external: ['node-pty', 'qrcode-terminal', 'ws'],
     banner: { js: '#!/usr/bin/env node' },
   });
@@ -44,7 +49,7 @@ async function buildServer() {
 
 async function buildClient() {
   await build({
-    entryPoints: [join(root, 'web/app.ts')],
+    entryPoints: [join(root, 'web/src/main.tsx')],
     outfile: join(distAssets, 'app.js'),
     platform: 'browser',
     target: ['es2022'],
@@ -52,9 +57,18 @@ async function buildClient() {
     bundle: true,
     minify: true,
     sourcemap: true,
+    jsx: 'automatic',
     logLevel: 'warning',
+    define: {
+      'process.env.NODE_ENV': JSON.stringify('production'),
+    },
+    loader: {
+      '.ttf': 'file',
+      '.woff': 'file',
+      '.woff2': 'file',
+    },
   });
-  // Ship xterm.css alongside the bundle (linked from index.html)
+  // xterm base CSS, served alongside the bundle
   const xtermCss = readFileSync(
     join(root, 'node_modules/@xterm/xterm/css/xterm.css'),
     'utf8',
@@ -82,7 +96,7 @@ async function main() {
   clean();
   console.log('▶ bundling server (esbuild → Node ESM)…');
   await buildServer();
-  console.log('▶ bundling client (xterm + app.ts)…');
+  console.log('▶ bundling client (React + esbuild)…');
   await buildClient();
   console.log('▶ copying static assets…');
   copyStatic();

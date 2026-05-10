@@ -28,24 +28,31 @@ function parseArgs(argv: string[]): Flags {
   let tokenFlagSeen = false;
 
   for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    const next = () => argv[++i];
+    const a = argv[i]!;
+    const next = (forFlag: string): string => {
+      const v = argv[++i];
+      if (v === undefined) {
+        console.error(`Missing value for ${forFlag}`);
+        process.exit(2);
+      }
+      return v;
+    };
     switch (a) {
       case '--port':
       case '-p':
-        flags.port = Number(next());
+        flags.port = Number(next(a));
         break;
       case '--host':
       case '-H':
-        flags.host = next();
+        flags.host = next(a);
         break;
       case '--root':
       case '-r':
-        flags.root = resolve(expandHome(next()));
+        flags.root = resolve(expandHome(next(a)));
         break;
       case '--token':
       case '-t':
-        flags.token = next();
+        flags.token = next(a);
         tokenFlagSeen = true;
         break;
       case '--no-token':
@@ -54,7 +61,7 @@ function parseArgs(argv: string[]): Flags {
         break;
       case '--command':
       case '-c':
-        flags.command = next();
+        flags.command = next(a);
         break;
       case '--help':
       case '-h':

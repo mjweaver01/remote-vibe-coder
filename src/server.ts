@@ -201,7 +201,6 @@ async function handleHttp(
 
 async function serveStatic(pathname: string, staticDir: string, res: ServerResponse) {
   let rel = pathname === '/' ? '/index.html' : pathname;
-  // sanitize: no traversal
   if (rel.includes('..')) {
     res.writeHead(400);
     res.end('bad path');
@@ -215,17 +214,23 @@ async function serveStatic(pathname: string, staticDir: string, res: ServerRespo
   }
   try {
     const s = await stat(file);
-    if (s.isDirectory()) {
-      res.writeHead(404);
-      res.end();
+    if (s.isFile()) {
+      const data = await readFile(file);
+      res.writeHead(200, {
+        'content-type': MIME[extname(file)] ?? 'application/octet-stream',
+        'cache-control': 'no-cache',
+      });
+      res.end(data);
       return;
     }
-    const data = await readFile(file);
-    res.writeHead(200, {
-      'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-      'cache-control': 'no-cache',
-    });
-    res.end(data);
+  } catch {
+    // fall through to SPA fallback
+  }
+  // SPA fallback: serve index.html for client-side routes
+  try {
+    const indexHtml = await readFile(join(staticDir, 'index.html'));
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-cache' });
+    res.end(indexHtml);
   } catch {
     res.writeHead(404, { 'content-type': 'text/plain' });
     res.end('not found');

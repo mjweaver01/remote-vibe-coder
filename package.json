@@ -30,14 +30,21 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
+    "lucide-react": "^1.14.0",
     "monaco-editor": "^0.55.1",
     "node-pty": "^1.0.0",
     "qrcode-terminal": "^0.12.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-router": "^7.15.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/qrcode-terminal": "^0.12.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@types/ws": "^8.5.13",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
