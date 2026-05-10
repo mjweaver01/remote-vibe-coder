@@ -159,6 +159,12 @@ async function main() {
   const cyan = "\x1b[36m";
   const yellow = "\x1b[33m";
 
+  if (process.env.RVC_DEV) {
+    console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
+    console.log(`${dim}api${reset}  http://${flags.host}:${flags.port}`);
+    return;
+  }
+
   console.log("");
   console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
   console.log(`${dim}root:${reset}  ${flags.root}`);

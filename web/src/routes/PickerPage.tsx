@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import { ArrowLeft, ChevronRight, History, Inbox, Plus, RotateCcw } from "../components/icons.ts";
+import { Link, useNavigate, useParams } from "react-router";
+import { ArrowLeft, ChevronRight, History, Inbox, Plus, RotateCcw, SquareTerminal } from "../components/icons.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { LoadingState } from "../components/LoadingState.tsx";
 import { Topbar } from "../components/Topbar.tsx";
 import { IconButton } from "../components/IconButton.tsx";
 import { useAsync } from "../hooks/useAsync.ts";
+import { useSessions } from "../hooks/useSessions.ts";
+import { useSessionActivity } from "../hooks/useSessionActivity.ts";
 import { useToast } from "../hooks/useToast.ts";
 import { useWs } from "../hooks/useWs.ts";
 import { fetchHistory } from "../lib/api.ts";
@@ -39,6 +41,10 @@ export function PickerPage() {
   const ws = useWs();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+
+  const sessions = useSessions();
+  const activeSessionIds = useSessionActivity();
+  const activeSessions = sessions.filter((s) => s.cwd === cwd);
 
   const { data, error, loading, reload } = useAsync((signal) => fetchHistory(cwd, signal), [cwd]);
 
@@ -75,6 +81,29 @@ export function PickerPage() {
       />
 
       <div className="page-body">
+        {activeSessions.length > 0 ? (
+          <section className="rows">
+            <div className="rows-title">Active sessions</div>
+            {activeSessions.map((s) => (
+              <Link key={s.id} to={`/s/${s.id}`} className="row row-session">
+                <SquareTerminal size={18} className="row-icon" aria-hidden="true" />
+                <div className="row-body">
+                  <div className="row-name">
+                    Session
+                    {activeSessionIds.has(s.id) ? (
+                      <span className="session-activity-dot" aria-label="Active" />
+                    ) : null}
+                  </div>
+                  <div className="row-meta">
+                    {s.viewers === 1 ? "1 viewer" : `${s.viewers} viewers`}
+                  </div>
+                </div>
+                <ChevronRight size={16} className="row-chev" aria-hidden="true" />
+              </Link>
+            ))}
+          </section>
+        ) : null}
+
         <div className="picker-actions">
           <button
             type="button"

@@ -557,6 +557,13 @@ button:focus-visible {
   background: var(--accent-soft);
   border-color: rgba(255, 138, 76, 0.3);
 }
+@media (hover: hover) {
+  .row-folder .row-star:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: rgba(255, 138, 76, 0.3);
+  }
+}
 .row-session {
   background: linear-gradient(180deg, rgba(255, 138, 76, 0.05), transparent);
 }
@@ -1125,22 +1132,23 @@ button:focus-visible {
   min-width: 0;
 }
 .git-file-action {
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
   border: 0;
   background: transparent;
-  color: #555;
+  color: #888;
   cursor: pointer;
   padding: 0;
 }
-@media (hover: hover) {
-  .git-file-action:hover {
-    color: #ccc;
-  }
+.git-file-row:hover .git-file-action {
+  display: inline-flex;
+}
+.git-file-action:hover {
+  color: #fff;
 }
 .git-badge {
   flex-shrink: 0;

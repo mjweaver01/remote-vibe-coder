@@ -15,6 +15,7 @@ import { LoadingState } from "../components/LoadingState.tsx";
 import { Topbar } from "../components/Topbar.tsx";
 import { useAsync } from "../hooks/useAsync.ts";
 import { useSessions } from "../hooks/useSessions.ts";
+import { useSessionActivity } from "../hooks/useSessionActivity.ts";
 import { fetchFolders } from "../lib/api.ts";
 import { getFavorites, isFavorite, toggleFavorite, type Favorite } from "../lib/favorites.ts";
 
@@ -25,6 +26,7 @@ export function BrowserPage() {
   const path = params.get(PATH_PARAM) ?? undefined;
   const navigate = useNavigate();
   const sessions = useSessions();
+  const activeSessionIds = useSessionActivity();
   const [query, setQuery] = useState("");
   const [favorites, setFavorites] = useState<Favorite[]>(() => getFavorites());
 
@@ -86,7 +88,12 @@ export function BrowserPage() {
                   <Link key={s.id} to={`/s/${s.id}`} className="row row-session">
                     <SquareTerminal size={18} className="row-icon" aria-hidden="true" />
                     <div className="row-body">
-                      <div className="row-name">{s.cwdLabel}</div>
+                      <div className="row-name">
+                        {s.cwdLabel}
+                        {activeSessionIds.has(s.id) ? (
+                          <span className="session-activity-dot" aria-label="Active" />
+                        ) : null}
+                      </div>
                       <div className="row-meta">
                         {s.viewers === 1 ? "1 viewer" : `${s.viewers} viewers`}
                       </div>
