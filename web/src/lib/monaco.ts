@@ -17,17 +17,33 @@ export function loadMonaco(): Promise<any> {
       resolve(window.monaco);
       return;
     }
+
+    const timeout = setTimeout(() => {
+      pending = null;
+      reject(new Error("Monaco editor timed out loading"));
+    }, 15_000);
+
+    const done = (result: unknown, err?: Error) => {
+      clearTimeout(timeout);
+      if (err) {
+        pending = null;
+        reject(err);
+      } else {
+        resolve(result);
+      }
+    };
+
     const script = document.createElement("script");
     script.src = "/assets/monaco/vs/loader.js";
     script.onload = () => {
       try {
         window.require.config({ paths: { vs: "/assets/monaco/vs" } });
-        window.require(["vs/editor/editor.main"], () => resolve(window.monaco), reject);
+        window.require(["vs/editor/editor.main"], () => done(window.monaco), (err: unknown) => done(null, err instanceof Error ? err : new Error(String(err))));
       } catch (err) {
-        reject(err instanceof Error ? err : new Error(String(err)));
+        done(null, err instanceof Error ? err : new Error(String(err)));
       }
     };
-    script.onerror = () => reject(new Error("Failed to load monaco loader"));
+    script.onerror = () => done(null, new Error("Failed to load Monaco editor assets"));
     document.head.appendChild(script);
   });
   return pending;

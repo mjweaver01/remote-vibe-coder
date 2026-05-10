@@ -2,7 +2,7 @@
 // All operations are sandboxed under --root.
 
 import { execFile } from "node:child_process";
-import { readFile, readdir, stat } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import { resolve, join, sep, relative, basename } from "node:path";
 import { promisify } from "node:util";
 

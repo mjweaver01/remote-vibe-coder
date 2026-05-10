@@ -1,5 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { languageForFile, loadMonaco } from "../lib/monaco.ts";
+import { EmptyState } from "./EmptyState.tsx";
+import { AlertCircle } from "./icons.ts";
 
 interface Props {
   /** When provided, renders a side-by-side / inline diff editor. */
@@ -21,9 +23,11 @@ export function MonacoCode({ diff, code, fileName }: Props) {
   const editorRef = useRef<any>(null);
   const diffEditorRef = useRef<any>(null);
   const cancelledRef = useRef(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     cancelledRef.current = false;
+    setLoadError(null);
     const container = containerRef.current;
     if (!container) return;
 
@@ -31,7 +35,15 @@ export function MonacoCode({ diff, code, fileName }: Props) {
     let resizeObs: ResizeObserver | null = null;
 
     void (async () => {
-      const monaco = await loadMonaco();
+      let monaco: any;
+      try {
+        monaco = await loadMonaco();
+      } catch (err) {
+        if (!cancelledRef.current) {
+          setLoadError(err instanceof Error ? err.message : String(err));
+        }
+        return;
+      }
       if (cancelledRef.current) return;
 
       const isWide = window.innerWidth >= 900;
@@ -93,6 +105,10 @@ export function MonacoCode({ diff, code, fileName }: Props) {
       diffEditorRef.current = null;
     };
   }, [diff?.original, diff?.modified, code, fileName]);
+
+  if (loadError) {
+    return <EmptyState icon={AlertCircle} title="Editor failed to load" description={loadError} tone="error" />;
+  }
 
   return <div ref={containerRef} className="monaco-host" />;
 }

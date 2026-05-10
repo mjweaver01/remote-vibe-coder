@@ -17,6 +17,7 @@ export interface ServerOptions {
   token: string | null;
   staticDir: string;
   command: string;
+  idleTimeoutMs?: number;
 }
 
 const MIME: Record<string, string> = {
@@ -39,7 +40,7 @@ export interface RunningServer {
 }
 
 export async function startServer(opts: ServerOptions): Promise<RunningServer> {
-  const sessions = new SessionManager({ command: opts.command });
+  const sessions = new SessionManager({ command: opts.command, idleTimeoutMs: opts.idleTimeoutMs });
 
   const httpServer = createServer(async (req, res) => {
     try {
@@ -75,6 +76,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   return {
     url,
     close: async () => {
+      sessions.close();
       sessions.killAll();
       wss.clients.forEach((c) => c.terminate());
       await new Promise<void>((r) => httpServer.close(() => r()));

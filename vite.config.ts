@@ -20,7 +20,7 @@ export default defineConfig({
   build: {
     outDir: "../dist/web",
     assetsDir: "assets",
-    sourcemap: true,
+    sourcemap: false,
     emptyOutDir: false,
     rollupOptions: {
       output: {

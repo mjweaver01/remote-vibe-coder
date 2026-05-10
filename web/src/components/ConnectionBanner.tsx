@@ -11,6 +11,11 @@ export function ConnectionBanner() {
           <Loader2 size={14} className="spin" aria-hidden="true" />
           <span>Reconnecting…</span>
         </>
+      ) : status === "dead" ? (
+        <>
+          <AlertCircle size={14} aria-hidden="true" />
+          <span>Server unreachable — reload to retry</span>
+        </>
       ) : status === "closed" ? (
         <>
           <AlertCircle size={14} aria-hidden="true" />

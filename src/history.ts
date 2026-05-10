@@ -2,7 +2,7 @@
 
 import { readdir, stat, open } from "node:fs/promises";
 import { homedir } from "node:os";
-import { join, basename } from "node:path";
+import { join } from "node:path";
 
 export interface PastSession {
   id: string;

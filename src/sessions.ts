@@ -14,6 +14,7 @@ interface Session {
   cwd: string;
   cwdLabel: string;
   createdAt: number;
+  lastActivityAt: number;
   cols: number;
   rows: number;
   pty: IPty;
@@ -26,9 +27,32 @@ export class SessionManager {
   private sessions = new Map<string, Session>();
   private listeners = new Set<ViewerSink>();
   private command: string;
+  private idleTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(opts: { command: string }) {
+  constructor(opts: { command: string; idleTimeoutMs?: number }) {
     this.command = opts.command;
+    if (opts.idleTimeoutMs) {
+      const timeoutMs = opts.idleTimeoutMs;
+      this.idleTimer = setInterval(() => {
+        const now = Date.now();
+        for (const s of this.sessions.values()) {
+          if (!s.ended && now - s.lastActivityAt > timeoutMs) {
+            try {
+              s.pty.kill();
+            } catch {
+              // already dead
+            }
+          }
+        }
+      }, 60_000);
+    }
+  }
+
+  close() {
+    if (this.idleTimer) {
+      clearInterval(this.idleTimer);
+      this.idleTimer = null;
+    }
   }
 
   /** Subscribe to session-list updates. Returns an unsubscribe fn. */
@@ -81,6 +105,7 @@ export class SessionManager {
       cwd,
       cwdLabel,
       createdAt: Date.now(),
+      lastActivityAt: Date.now(),
       cols: cols | 0,
       rows: rows | 0,
       pty: ptyProc,
@@ -90,6 +115,7 @@ export class SessionManager {
     };
 
     ptyProc.onData((data) => {
+      session.lastActivityAt = Date.now();
       session.ringBuffer = appendRing(session.ringBuffer, data);
       const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers) v.send(msg);
@@ -135,7 +161,10 @@ export class SessionManager {
 
   input(sessionId: string, data: string) {
     const s = this.sessions.get(sessionId);
-    if (s && !s.ended) s.pty.write(data);
+    if (s && !s.ended) {
+      s.lastActivityAt = Date.now();
+      s.pty.write(data);
+    }
   }
 
   resize(sessionId: string, cols: number, rows: number) {

@@ -13,6 +13,7 @@ interface Flags {
   root: string;
   token: string | null;
   command: string;
+  idleTimeoutMs: number | null;
   help: boolean;
 }
 
@@ -23,6 +24,7 @@ function parseArgs(argv: string[]): Flags {
     root: expandHome("~/Websites"),
     token: null,
     command: "claude",
+    idleTimeoutMs: null,
     help: false,
   };
   let tokenFlagSeen = false;
@@ -70,6 +72,15 @@ function parseArgs(argv: string[]): Flags {
       case "-c":
         flags.command = next(a);
         break;
+      case "--idle-timeout": {
+        const mins = Number(next(a));
+        if (!Number.isFinite(mins) || mins <= 0) {
+          console.error(`error: --idle-timeout must be a positive number of minutes`);
+          process.exit(2);
+        }
+        flags.idleTimeoutMs = mins * 60 * 1000;
+        break;
+      }
       case "--help":
       case "-h":
         flags.help = true;
@@ -102,6 +113,7 @@ Options:
   -t, --token <str>      Require ?token=… (auto-generated when --host is non-loopback)
       --no-token         Skip token (insecure on LAN)
   -c, --command <bin>    Command to run in each session (default: claude)
+      --idle-timeout <m> Kill sessions idle for more than <m> minutes
   -h, --help             Show this help
 `);
 }
@@ -134,6 +146,15 @@ function locateStaticDir(): string {
 }
 
 async function main() {
+  const [major] = process.versions.node.split(".").map(Number);
+  if ((major ?? 0) < 25) {
+    console.error(
+      `error: Node.js ${process.versions.node} is not supported — remote-vibe-coder requires Node 25 or later.\n` +
+        `       https://nodejs.org/en/download`
+    );
+    process.exit(1);
+  }
+
   const flags = parseArgs(process.argv.slice(2));
   if (flags.help) {
     printHelp();
@@ -158,6 +179,7 @@ async function main() {
     token: flags.token,
     staticDir,
     command: flags.command,
+    idleTimeoutMs: flags.idleTimeoutMs ?? undefined,
   });
 
   const reset = "\x1b[0m";

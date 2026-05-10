@@ -5,18 +5,20 @@
 import type { ClientMessage, ServerMessage, SessionInfo } from "../../../src/types.ts";
 import { wsUrl } from "./auth.ts";
 
-export type WsStatus = "connecting" | "open" | "reconnecting" | "closed";
+export type WsStatus = "connecting" | "open" | "reconnecting" | "closed" | "dead";
 
 type Listener<T> = (value: T) => void;
 type MessageListener = Listener<ServerMessage>;
 
 const MIN_RETRY_MS = 500;
 const MAX_RETRY_MS = 8_000;
+const MAX_RETRIES = 10;
 
 export class WsClient {
   private socket: WebSocket | null = null;
   private status: WsStatus = "closed";
   private retryDelay = MIN_RETRY_MS;
+  private retryCount = 0;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
 
@@ -94,6 +96,7 @@ export class WsClient {
 
     socket.addEventListener("open", () => {
       this.retryDelay = MIN_RETRY_MS;
+      this.retryCount = 0;
       this.setStatus("open");
     });
 
@@ -121,6 +124,11 @@ export class WsClient {
 
   private scheduleReconnect() {
     if (this.destroyed) return;
+    if (this.retryCount >= MAX_RETRIES) {
+      this.setStatus("dead");
+      return;
+    }
+    this.retryCount++;
     this.setStatus("reconnecting");
     this.retryTimer = setTimeout(() => {
       this.retryTimer = null;
