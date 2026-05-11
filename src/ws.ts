@@ -52,7 +52,12 @@ function attachViewer(ws: WebSocket, sessions: SessionManager) {
       ws.close(1008, "invalid message format");
       return;
     }
-    dispatch(msg, sink, sessions);
+    void dispatch(msg, sink, sessions).catch((err) => {
+      sink.send({
+        type: "error",
+        message: err instanceof Error ? err.message : String(err),
+      });
+    });
   });
 
   const teardown = () => {
@@ -63,13 +68,13 @@ function attachViewer(ws: WebSocket, sessions: SessionManager) {
   ws.on("error", teardown);
 }
 
-function dispatch(msg: ClientMessage, sink: ViewerSink, sessions: SessionManager) {
+async function dispatch(msg: ClientMessage, sink: ViewerSink, sessions: SessionManager) {
   switch (msg.type) {
     case "list":
       sink.send({ type: "sessions", sessions: sessions.list() });
       return;
     case "create": {
-      const info = sessions.create(msg.cwd, msg.cols, msg.rows, msg.mode);
+      const info = await sessions.create(msg.cwd, msg.cols, msg.rows, msg.mode);
       sessions.attach(info.id, sink);
       sink.send({ type: "created", session: info });
       return;

@@ -1,6 +1,11 @@
 import { spawn, type IPty } from "node-pty";
 import { randomBytes } from "node:crypto";
 import { basename } from "node:path";
+import {
+  listConversationFiles,
+  mostRecentConversationId,
+  readFirstUserMessage,
+} from "./claudeProjects.ts";
 import type { CreateMode, ServerMessage, SessionInfo } from "./types.ts";
 
 export const RING_BUFFER_BYTES = 64 * 1024;
@@ -21,13 +26,20 @@ interface Session {
   ringBuffer: string;
   viewers: Set<ViewerSink>;
   ended: boolean;
+  /** Conversation log files that existed before this session spawned (for "new" mode attribution). */
+  preexistingConvFiles: Set<string>;
+  conversationId?: string;
+  title?: string;
 }
+
+const TITLE_REFRESH_MS = 3000;
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
   private listeners = new Set<ViewerSink>();
   private command: string;
   private idleTimer: ReturnType<typeof setInterval> | null = null;
+  private titleTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(opts: { command: string; idleTimeoutMs?: number }) {
     this.command = opts.command;
@@ -46,6 +58,9 @@ export class SessionManager {
         }
       }, 60_000);
     }
+    this.titleTimer = setInterval(() => {
+      void this.refreshTitles();
+    }, TITLE_REFRESH_MS);
   }
 
   close() {
@@ -53,6 +68,30 @@ export class SessionManager {
       clearInterval(this.idleTimer);
       this.idleTimer = null;
     }
+    if (this.titleTimer) {
+      clearInterval(this.titleTimer);
+      this.titleTimer = null;
+    }
+  }
+
+  /** Resolve conversationId + title for any session missing them. Broadcasts on change. */
+  private async refreshTitles() {
+    let changed = false;
+    for (const s of this.sessions.values()) {
+      if (s.title) continue;
+      if (!s.conversationId) {
+        const files = await listConversationFiles(s.cwd);
+        const fresh = files.find((f) => !s.preexistingConvFiles.has(f));
+        if (!fresh) continue;
+        s.conversationId = fresh.replace(/\.jsonl$/, "");
+      }
+      const title = await readFirstUserMessage(s.cwd, s.conversationId);
+      if (title) {
+        s.title = title;
+        changed = true;
+      }
+    }
+    if (changed) this.broadcastSessions();
   }
 
   /** Subscribe to session-list updates. Returns an unsubscribe fn. */
@@ -75,6 +114,8 @@ export class SessionManager {
       cols: s.cols,
       rows: s.rows,
       viewers: s.viewers.size,
+      title: s.title,
+      conversationId: s.conversationId,
     };
   }
 
@@ -83,7 +124,12 @@ export class SessionManager {
     for (const l of this.listeners) l.send(msg);
   }
 
-  create(cwd: string, cols: number, rows: number, mode: CreateMode = { kind: "new" }): SessionInfo {
+  async create(
+    cwd: string,
+    cols: number,
+    rows: number,
+    mode: CreateMode = { kind: "new" }
+  ): Promise<SessionInfo> {
     const id = randomBytes(8).toString("hex");
     const cwdLabel = labelFor(cwd);
     const args =
@@ -92,6 +138,18 @@ export class SessionManager {
         : mode.kind === "resume"
           ? ["--resume", mode.conversationId]
           : [];
+
+    // Snapshot existing conversation files so a new one created by this PTY
+    // can be attributed back to this session in refreshTitles().
+    const preexistingConvFiles = new Set(await listConversationFiles(cwd));
+
+    // For continue/resume we already know which conversation will be appended to.
+    const knownConvId =
+      mode.kind === "resume"
+        ? mode.conversationId
+        : mode.kind === "continue"
+          ? await mostRecentConversationId(cwd)
+          : undefined;
     const ptyProc = spawn(this.command, args, {
       name: "xterm-256color",
       cols: Math.max(20, cols | 0),
@@ -112,7 +170,19 @@ export class SessionManager {
       ringBuffer: "",
       viewers: new Set(),
       ended: false,
+      preexistingConvFiles,
+      conversationId: knownConvId ?? undefined,
     };
+
+    // Resolve the title now if we already know the conversation id.
+    if (session.conversationId) {
+      void readFirstUserMessage(cwd, session.conversationId).then((title) => {
+        if (title && !session.title) {
+          session.title = title;
+          this.broadcastSessions();
+        }
+      });
+    }
 
     ptyProc.onData((data) => {
       session.lastActivityAt = Date.now();

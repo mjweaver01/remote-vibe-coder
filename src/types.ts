@@ -14,6 +14,10 @@ export interface SessionInfo {
   cols: number;
   rows: number;
   viewers: number;
+  /** First user message of the bound Claude Code conversation, if known. */
+  title?: string;
+  /** Bound Claude Code conversation id, if known. */
+  conversationId?: string;
 }
 
 export type CreateMode =

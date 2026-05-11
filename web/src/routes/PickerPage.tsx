@@ -89,8 +89,8 @@ export function PickerPage() {
               <Link key={s.id} to={`/s/${s.id}`} className="row row-session">
                 <SquareTerminal size={18} className="row-icon" aria-hidden="true" />
                 <div className="row-body">
-                  <div className="row-name">
-                    Session
+                  <div className="row-name" title={s.title || "Session"}>
+                    {s.title || "Session"}
                     {activeSessionIds.has(s.id) ? (
                       <span className="session-activity-dot" aria-label="Active" />
                     ) : null}
