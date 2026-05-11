@@ -19,7 +19,7 @@ Distributed as an npm package: `npx remote-vibe-coder --root ~/Websites`.
 ┌─────────────────────────┐     HTTP + WS      ┌───────────────────────────────────┐
 │  Browser (any device)   │ ◀────────────────▶ │  Node server (this package)       │
 │                         │                     │                                   │
-│  React 19 SPA           │                     │  http.createServer                │
+│  React 19 SPA           │                     │  Hono + @hono/node-server         │
 │  xterm.js terminal      │                     │  WebSocketServer (ws)             │
 │  Monaco editor          │                     │  SessionManager (node-pty)        │
 │  Voice input (Web API)  │                     │  REST API: /api/*                 │
@@ -30,9 +30,9 @@ Distributed as an npm package: `npx remote-vibe-coder --root ~/Websites`.
 
 **Runtime:** Node 25+.
 
-The server is a single `http.createServer` instance with a `WebSocketServer` (from `ws`) sharing the same port via `server.on('upgrade')`. There is no Express, no framework. All routing is a chain of `if (url.pathname === ...)` checks in `handleHttp`.
+The server is built on **Hono** running on `@hono/node-server`. Composition lives in `src/server.ts`; all `/api/*` routes are registered against a sub-app in `src/routes/api.ts` and mounted via `app.route("/api", …)`. The WebSocket upgrade lives in `src/ws.ts` and attaches to the underlying `http.Server` returned by `serve()`, sharing the port with HTTP.
 
-Static assets are served from `dist/web/` (built by Vite). Any unrecognised path returns `index.html` (SPA fallback).
+Static assets are served from `dist/web/` via `@hono/node-server`'s `serveStatic`. Unknown paths fall through to `app.notFound`, which returns `index.html` so React Router can take over. The API sub-app has its own `app.all("*", → 404 JSON)` catch-all so mistyped `/api/*` paths return JSON, **not** the SPA fallback.
 
 ### Client
 
@@ -45,7 +45,8 @@ Static assets are served from `dist/web/` (built by Vite). Any unrecognised path
 | Concern        | Tool                                           | Why                                                               |
 | -------------- | ---------------------------------------------- | ----------------------------------------------------------------- |
 | Runtime        | Node 25+                                       | `node-pty` requires Node's libuv I/O loop                         |
-| Server HTTP/WS | `http` + `ws`                                  | No framework overhead; full control                               |
+| Server HTTP    | `hono` + `@hono/node-server`                   | ~170 KB total, clean handler API, excellent TS                    |
+| Server WS      | `ws`                                           | Shares port with Hono via `server.on("upgrade")`                  |
 | PTY            | `node-pty`                                     | Standard; prebuilt N-API binaries                                 |
 | Client build   | Vite + `@vitejs/plugin-react`                  | Fast HMR in dev, clean prod bundles                               |
 | Server build   | esbuild (via `src/build.ts`)                   | Transpiles server TS to single Node ESM bundle                    |
@@ -67,7 +68,10 @@ Static assets are served from `dist/web/` (built by Vite). Any unrecognised path
 remote-vibe-coder/
 ├── src/                        # Node server (TypeScript ESM)
 │   ├── cli.ts                  # Entry point: flag parsing, QR banner, SIGINT handler
-│   ├── server.ts               # HTTP routes + WebSocket upgrade + request auth
+│   ├── server.ts               # Hono composition: mounts /api, static, SPA fallback, WS
+│   ├── ws.ts                   # WebSocket upgrade + per-viewer message dispatch
+│   ├── routes/
+│   │   └── api.ts              # All /api/* routes (Hono sub-app, auth middleware, 404 catch)
 │   ├── sessions.ts             # PTY lifecycle: create/attach/detach/resize/kill
 │   ├── files.ts                # Sandboxed folder listing (/api/folders)
 │   ├── code.ts                 # File read, git diff, tree listing (/api/file, /api/diff, /api/tree)
@@ -76,7 +80,7 @@ remote-vibe-coder/
 │   ├── auth.ts                 # Token generation + constant-time compare
 │   ├── types.ts                # WebSocket protocol types (shared with web/)
 │   ├── build.ts                # esbuild: bundles server → dist/cli.js
-│   └── dev.ts                  # Dev runner: vite watch + tsx watch, colour-tagged output
+│   └── dev.ts                  # Dev runner: vite dev + tsx watch, colour-tagged output
 │
 ├── web/                        # React SPA (Vite project root)
 │   ├── index.html              # Single shell; script type=module → /assets/app.js
@@ -134,6 +138,7 @@ remote-vibe-coder/
 | `Keybar.tsx`           | Terminal key bar. **Desktop:** horizontal scroll strip. **Mobile (≤767px):** gameboy layout — Up arrow left, 1/2/3/Enter diamond centre, secondary controls (Esc/Tab/voice/kbd/Ctrl+C) right. |
 | `LoadingState.tsx`     | Centred spinner + label for async loading states.                                                                                                                                             |
 | `MonacoCode.tsx`       | Monaco editor wrapper. Accepts `code` (plain) or `diff: {original, modified}` (DiffEditor). AMD loader injected once; cached Promise.                                                         |
+| `PairDevice.tsx`       | QR-icon button in the home page topbar. Opens a modal showing the server-rendered SVG QR (`/api/qr`) and the reachable LAN URL (`/api/pairing-url`) so phones can connect by scanning.        |
 | `Topbar.tsx`           | Page header: leading slot, title/subtitle, trailing slot. Sticky, safe-area-aware.                                                                                                            |
 | `ToastViewport.tsx`    | Fixed toast container (bottom-right on desktop, full-width on mobile).                                                                                                                        |
 | `VoiceButton.tsx`      | Mic button: uses browser Web Speech API (`SpeechRecognition`/`webkitSpeechRecognition`) → calls `onText(transcript)`. Hidden when API is unsupported.                                         |
@@ -229,10 +234,13 @@ All endpoints require `?token=<value>` when the server was started with a token 
 | GET    | `/api/diff?path=`    | Git diff vs HEAD. Returns `{original, modified, inGit, isUntracked}`.            |
 | GET    | `/api/history?path=` | Past Claude conversations for a cwd (reads `~/.claude/projects/`).               |
 | GET    | `/api/config`        | `{root, hasToken}` — used by the client to know the server root.                 |
+| GET    | `/api/pairing-url`   | `{url}` — reachable LAN URL for this server (loopback hostnames swapped for first non-internal IPv4). Used by the Pair Device modal caption. |
+| GET    | `/api/qr`            | SVG QR code encoding the same pairing URL. The Pair Device modal `<img src>` points here. |
 | GET    | `/api/git/status?path=` | Git status for a cwd. Returns `{inGit, root, branch, staged, unstaged, untracked}`. |
 | POST   | `/api/git/stage`     | Stage files. Body: `{files: string[]}`.                                          |
 | POST   | `/api/git/unstage`   | Unstage files. Body: `{files: string[]}`.                                        |
 | POST   | `/api/git/commit`    | Commit staged files. Body: `{cwd, message}`. Returns `{hash}`.                  |
+| —      | unknown `/api/*`     | Returns JSON `{error: "not found"}` with status 404. Does NOT fall through to the SPA. |
 | GET    | `/*`                 | Static assets from `dist/web/`. Unknown paths → `index.html` (SPA fallback).     |
 
 All paths are sandboxed. Any path resolving outside `--root` is rejected with 400.
@@ -249,11 +257,13 @@ npm run dev
 
 This runs `src/dev.ts` which:
 
-1. Checks for `dist/` — runs `npm run build` once if missing.
-2. Spawns `vite build --watch` (client, colour-tagged `[client]`).
-3. Waits for the first `"built in"` message from Vite, then spawns `tsx watch src/cli.ts` (server, colour-tagged `[server]`).
+1. Checks for `dist/` — runs `npm run build` once if missing (the Node server needs `dist/web/` to resolve `staticDir`, though Vite serves the actual assets in dev).
+2. Spawns `tsx watch src/cli.ts --port 4311` (Node server, tagged `[server]`).
+3. Spawns `vite dev` (real Vite dev server with HMR on port 4310, tagged `[client]`). Vite is configured to proxy `/api` and `/ws` to the Node server on 4311.
 
-Both processes share stdout. Edit any file in `web/` → Vite rebuilds the client bundle in ~200ms. Edit any file in `src/` → tsx restarts the server.
+The browser hits **port 4310** in dev (the Vite dev server). Vite serves the React SPA with HMR and proxies API + WS upgrades to the Node server. `host: true` + `allowedHosts: true` in `vite.config.ts` means Vite binds `0.0.0.0` — phones on the same LAN can hit `http://<your-mac-ip>:4310` and the proxy preserves the original `Host` header so `/api/qr` and `/api/pairing-url` encode the right address.
+
+Edit any file in `web/` → Vite HMR. Edit any file in `src/` → tsx restarts the Node server.
 
 ### Building for production
 
