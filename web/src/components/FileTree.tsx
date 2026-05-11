@@ -3,6 +3,8 @@ import { ChevronDown, ChevronRight, File as FileIcon, Folder, Inbox, Loader2 } f
 import { fetchTree, type TreeEntry } from "../lib/api.ts";
 import { EmptyState } from "./EmptyState.tsx";
 
+const MAX_TREE_DEPTH = 50;
+
 interface NodeState {
   loaded: boolean;
   loading: boolean;
@@ -67,6 +69,7 @@ export function FileTree({ rootPath, selectedPath, onSelectFile, changedPaths }:
   };
 
   const renderNode = (entry: TreeEntry, depth: number) => {
+    if (depth > MAX_TREE_DEPTH) return null;
     const isOpen = expanded.has(entry.path);
     const isSelected = selectedPath === entry.path;
     const isChanged = !entry.isDir && (changedPaths?.has(entry.path) ?? false);

@@ -18,14 +18,18 @@ export function loadMonaco(): Promise<any> {
       return;
     }
 
+    const script = document.createElement("script");
+
     const timeout = setTimeout(() => {
-      pending = null;
-      reject(new Error("Monaco editor timed out loading"));
+      done(null, new Error("Monaco editor timed out loading"));
     }, 15_000);
 
     const done = (result: unknown, err?: Error) => {
       clearTimeout(timeout);
+      script.onload = null;
+      script.onerror = null;
       if (err) {
+        script.remove();
         pending = null;
         reject(err);
       } else {
@@ -33,7 +37,6 @@ export function loadMonaco(): Promise<any> {
       }
     };
 
-    const script = document.createElement("script");
     script.src = "/assets/monaco/vs/loader.js";
     script.onload = () => {
       try {
