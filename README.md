@@ -1,12 +1,14 @@
-<p align="center">
-  <img src="web/public/favicon.svg" alt="Remote Vibe Coder" width="96" height="96" />
-</p>
+<div align="center">
+
+<img src="web/public/favicon.svg" alt="Remote Vibe Coder" width="96" height="96" />
 
 # Remote Vibe Coder
 
 Run Claude Code from your phone. A tiny local web server that wraps the real `claude` CLI in a PTY and renders it in your browser, with a folder picker, conversation history, a Monaco-powered file viewer with diff, and on-device voice transcription.
 
 Sessions live on the server, not in the browser — start a session on your laptop, walk away, and answer Claude's permission prompts from your phone. Browser reload restores the exact place you left off.
+
+</div>
 
 ## Quick start
 
