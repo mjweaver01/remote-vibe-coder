@@ -8,6 +8,7 @@ interface Props {
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
+  resultIndex: number;
 }
 interface SpeechRecognitionErrorEvent extends Event {
   error: string;
@@ -15,12 +16,14 @@ interface SpeechRecognitionErrorEvent extends Event {
 interface ISpeechRecognition extends EventTarget {
   lang: string;
   interimResults: boolean;
+  continuous: boolean;
   maxAlternatives: number;
   onresult: ((ev: SpeechRecognitionEvent) => void) | null;
   onerror: ((ev: SpeechRecognitionErrorEvent) => void) | null;
   onend: (() => void) | null;
   start(): void;
   stop(): void;
+  abort(): void;
 }
 type SpeechRecognitionCtor = new () => ISpeechRecognition;
 
@@ -60,6 +63,14 @@ export function VoiceButton({ onText }: Props) {
   };
 
   const startLevelMonitor = async () => {
+    // iOS routes the mic to the system speech service when SpeechRecognition is
+    // active. Holding our own MediaStream in parallel causes a "service-not-allowed"
+    // error from the recognizer. Fall back to the CSS pulse animation there.
+    const ua = navigator.userAgent;
+    const isIOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    if (isIOS) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -96,33 +107,86 @@ export function VoiceButton({ onText }: Props) {
     }
   };
 
-  const startRecording = () => {
-    if (isRecording) return;
+  const warmedUpRef = useRef(false);
+  const wantRecordingRef = useRef(false);
 
-    const SR = getSpeechRecognition();
-    if (!SR) return;
+  const warmupMicPermission = async () => {
+    // iOS Safari's webkitSpeechRecognition routes through Siri's dictation service
+    // and never triggers its own mic-permission prompt. Without an explicit
+    // getUserMedia call first, start() returns "service-not-allowed" with no UI.
+    if (warmedUpRef.current) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      warmedUpRef.current = true;
+    } catch {
+      // User denied or no mic — let start() fail naturally and surface its error.
+    }
+  };
 
+  const spawnRecognition = (SR: SpeechRecognitionCtor) => {
     const recognition = new SR();
     recognition.lang = "en-US";
     recognition.interimResults = false;
+    recognition.continuous = true;
     recognition.maxAlternatives = 1;
 
     recognition.onresult = (ev) => {
-      const text = ev.results[0]?.[0]?.transcript?.trim() ?? "";
-      if (text) onText(text);
-      else toast.push("info", "No speech detected");
+      const results = ev.results;
+      for (let i = ev.resultIndex; i < results.length; i++) {
+        const r = results[i];
+        if (!r?.isFinal) continue;
+        const text = r[0]?.transcript?.trim() ?? "";
+        if (text) onText(text + " ");
+      }
     };
 
     recognition.onerror = (ev) => {
-      if (ev.error !== "aborted") toast.push("error", `Speech error: ${ev.error}`);
+      if (ev.error === "no-speech" || ev.error === "aborted") return;
+      toast.push("error", `Speech error: ${ev.error}`);
     };
 
     recognition.onend = () => {
+      // Recognizer auto-stops after silence. Restart while the user has it on.
+      // start() must be deferred — calling it synchronously inside onend throws
+      // InvalidStateError because the previous session hasn't finished tearing down.
+      if (wantRecordingRef.current) {
+        const SR2 = getSpeechRecognition();
+        if (SR2) {
+          const next = spawnRecognition(SR2);
+          recognitionRef.current = next;
+          window.setTimeout(() => {
+            if (recognitionRef.current !== next || !wantRecordingRef.current) return;
+            try {
+              next.start();
+            } catch {
+              wantRecordingRef.current = false;
+              recognitionRef.current = null;
+              setIsRecording(false);
+              stopLevelMonitor();
+            }
+          }, 150);
+          return;
+        }
+      }
       setIsRecording(false);
       recognitionRef.current = null;
       stopLevelMonitor();
     };
 
+    return recognition;
+  };
+
+  const startRecording = async () => {
+    if (isRecording) return;
+
+    const SR = getSpeechRecognition();
+    if (!SR) return;
+
+    await warmupMicPermission();
+
+    wantRecordingRef.current = true;
+    const recognition = spawnRecognition(SR);
     recognitionRef.current = recognition;
     recognition.start();
     setIsRecording(true);
@@ -130,7 +194,19 @@ export function VoiceButton({ onText }: Props) {
   };
 
   const stopRecording = () => {
-    recognitionRef.current?.stop();
+    wantRecordingRef.current = false;
+    const rec = recognitionRef.current;
+    if (!rec) return;
+    recognitionRef.current = null;
+    setIsRecording(false);
+    stopLevelMonitor();
+    try {
+      rec.stop();
+    } catch {
+      try {
+        rec.abort();
+      } catch {}
+    }
   };
 
   // Tear down on unmount in case the user navigates away mid-recording.
@@ -147,14 +223,10 @@ export function VoiceButton({ onText }: Props) {
       ref={buttonRef}
       type="button"
       className={cls}
-      title={isRecording ? "Release to send" : "Hold to speak"}
-      aria-label={isRecording ? "Release to send" : "Hold to speak"}
+      title={isRecording ? "Click to stop" : "Click to speak"}
+      aria-label={isRecording ? "Click to stop" : "Click to speak"}
       aria-pressed={isRecording}
-      onPointerDown={startRecording}
-      onPointerUp={stopRecording}
-      onPointerCancel={stopRecording}
-      onPointerLeave={stopRecording}
-      style={{ touchAction: "none" }}
+      onClick={() => (isRecording ? stopRecording() : startRecording())}
     >
       <Mic size={14} aria-hidden="true" />
     </button>

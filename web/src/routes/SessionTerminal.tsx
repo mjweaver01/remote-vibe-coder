@@ -103,7 +103,16 @@ export function SessionTerminal() {
 
   return (
     <section className="tab-pane tab-pane-terminal">
-      <div className="term-host-wrapper">
+      <div
+        className="term-host-wrapper"
+        onPointerDown={(e) => {
+          // Route mobile/touch input to the trap so the OS keyboard's dictation
+          // commits land in a real <input> (xterm's textarea drops them).
+          if (e.pointerType === "touch") {
+            queueMicrotask(() => kbdTrapRef.current?.focus());
+          }
+        }}
+      >
         <XTerm ref={termRef} onData={handleData} onResize={handleResize} />
         {replayBanner && (
           <div className="term-replay-banner" role="status" aria-live="polite">
