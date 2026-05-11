@@ -2,13 +2,15 @@
 
 # Remote Vibe Coder
 
-Orchestrate Claude Code from anywhere
+[![CI](https://github.com/mjweaver01/remote-vibe-coder/actions/workflows/ci.yml/badge.svg)](https://github.com/mjweaver01/remote-vibe-coder/actions/workflows/ci.yml)
+
+Orchestrate Claude Code from anywhere.
 
 ## What is RVC?
 
-A tiny local web server that wraps the real `claude` CLI in a PTY and renders it in your browser. Complete with a folder picker, conversation history, a Monaco-powered file viewer with diff and commit functionality, and voice transcription.
+A tiny local web server that wraps the real `claude` CLI in a PTY and renders it in your browser. Folder picker, conversation history, Monaco-powered file viewer with diff + commit, and voice transcription.
 
-Start a session on your laptop, and finish on your phone. Start new sessions and commit changes from anywhere. Vibe out from any device with an internet connection and a browser.
+Start a session on your laptop, finish on your phone. Vibe out from any device with a browser.
 
 ## Quick start
 
@@ -20,7 +22,7 @@ npx rvc --root ~/Websites
 
 > `rvc` is shorthand for `remote-vibe-coder` — both commands work.
 
-Open the printed URL. By default it binds to `127.0.0.1` only.
+Open the printed URL. Binds to `127.0.0.1` by default.
 
 ## Connect from your phone
 
@@ -28,26 +30,27 @@ Open the printed URL. By default it binds to `127.0.0.1` only.
 npx rvc --root ~/Websites --host 0.0.0.0
 ```
 
-A QR code is printed on startup. Scan it with your phone — the URL includes a one-shot token that's stored in `sessionStorage` after the first load.
+A QR code is printed on startup. Scan it — the URL carries a one-shot token stored in `sessionStorage` after first load.
 
 ## Features
 
-- **PTY-backed terminal**: spawns the real `claude` CLI, so every TUI feature works — slash commands, autocomplete, permission prompts, mid-task cancellation.
-- **Multi-viewer sessions**: the PTY is independent of any browser. Multiple devices can attach to the same `sessionId` and watch in real time. New attachers get a 64 KB ring-buffer replay so the screen looks correct on first connect.
-- **Conversation history**: lists past sessions per folder by reading `~/.claude/projects/<encoded-cwd>/*.jsonl`. Click any to resume via `claude --resume <id>`.
-- **VSCode-style files panel**: file tree + Monaco editor (the real one VSCode uses) + git diff vs HEAD.
-- **Git commits from the browser**: stage / unstage individual files and commit straight from the files panel — no need to drop into a terminal.
-- **Voice input**: a microphone button on the keybar that transcribes using the browser's native Web Speech API.
-- **URL-driven state**: every view (folder, picker, session, file path, diff toggle) is encoded in the URL. Browser reload restores you to the exact place.
-- **Mobile-first**: 1/2/3 (yes/no/other) keys are first-class buttons on the keybar; arrow keys, Esc, Tab, Ctrl+C, and a soft-keyboard summon are one tap away.
+- **PTY-backed terminal**: the real `claude` CLI — slash commands, autocomplete, permission prompts, cancellation.
+- **Multi-viewer sessions**: PTY is independent of the browser. Multiple devices attach to the same `sessionId`; new attachers get a 64 KB ring-buffer replay.
+- **Conversation history + continue**: pick up the last conversation in a folder, or resume any past session from `~/.claude/projects/`.
+- **Files panel**: file tree + Monaco editor + git diff vs HEAD.
+- **Git commits from the browser**: stage/unstage and commit without leaving the page.
+- **Voice input**: mic button on the keybar, native Web Speech API.
+- **Folder favorites + filter**: star folders and filter the browser list.
+- **URL-driven state**: every view is in the URL — reload restores it exactly.
+- **Mobile-first keybar**: 1/2/3 (yes/no/other), arrows, Esc, Tab, Ctrl+C, soft-keyboard summon.
 
 ## CLI
 
 ```
-remote-vibe-coder [options]   # or: rvc [options]
+rvc [options]   # alias of remote-vibe-coder
 
   -p, --port <n>         Port to listen on (default: 4310)
-  -H, --host <addr>      Bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
+  -H, --host <addr>      Bind address (default: 127.0.0.1; 0.0.0.0 for LAN)
   -r, --root <path>      Folder you can browse (default: ~/Websites)
   -t, --token <str>      Require ?token=… (auto-generated on non-loopback host)
       --no-token         Skip token (insecure on LAN)
@@ -57,20 +60,19 @@ remote-vibe-coder [options]   # or: rvc [options]
 
 ## Trust model
 
-- The token is shown only on the local TTY where the server starts.
-- Anyone with the token can run `claude` against the user's account, including all of its tool permissions. Treat the token like an SSH key.
-- For over-WAN access, prefer a Tailscale or SSH tunnel rather than exposing the port.
+The token is shown only on the local TTY where the server starts. Anyone with it can run `claude` as you — treat it like an SSH key. For WAN access, prefer Tailscale or an SSH tunnel.
 
 ## Development
 
 ```bash
-git clone <repo>
+git clone git@github.com:mjweaver01/remote-vibe-coder.git
 cd remote-vibe-coder
 npm install
-npm run dev   # builds web bundle, then runs the server with tsx watch
+npm run dev         # vite watch + tsx watch
+npm test            # vitest
+npm run typecheck   # tsc --noEmit
+npm run build       # produces dist/ (server + web + monaco)
 ```
-
-`npm run build` produces `dist/` (server bundle + bundled web assets + monaco assets).
 
 ## License
 
