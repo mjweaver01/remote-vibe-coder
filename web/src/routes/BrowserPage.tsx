@@ -13,6 +13,7 @@ import {
 } from "../components/icons.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { LoadingState } from "../components/LoadingState.tsx";
+import { PairDeviceButton } from "../components/PairDevice.tsx";
 import { Topbar } from "../components/Topbar.tsx";
 import { useAsync } from "../hooks/useAsync.ts";
 import { useSessions } from "../hooks/useSessions.ts";
@@ -66,6 +67,7 @@ export function BrowserPage() {
         leading={<AudioWaveform size={20} color="var(--accent)" aria-hidden="true" />}
         title="remote-vibe-coder"
         subtitle={data ? data.cwdLabel : (path ?? "")}
+        trailing={<PairDeviceButton />}
       />
       <div className="page-body">
         {loading && !data ? <LoadingState label="Reading folder…" /> : null}

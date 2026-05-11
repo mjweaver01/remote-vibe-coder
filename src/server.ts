@@ -1,7 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile, stat } from "node:fs/promises";
+import { networkInterfaces } from "node:os";
 import { extname, join, resolve } from "node:path";
 import { WebSocketServer, type WebSocket } from "ws";
+import QRCode from "qrcode";
 import { tokensMatch } from "./auth.ts";
 import { gitDiff, listTree, readFileSafe } from "./code.ts";
 import { gitStatus, gitStage, gitUnstage, gitCommit } from "./git.ts";
@@ -205,6 +207,33 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse, opts: Serve
     return;
   }
 
+  if (url.pathname === "/api/pairing-url") {
+    res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
+    res.end(JSON.stringify({ url: buildPairingUrl(req, opts) }));
+    return;
+  }
+
+  if (url.pathname === "/api/qr") {
+    const pairingUrl = buildPairingUrl(req, opts);
+    try {
+      const svg = await QRCode.toString(pairingUrl, {
+        type: "svg",
+        margin: 1,
+        width: 280,
+      });
+      res.writeHead(200, {
+        "content-type": "image/svg+xml; charset=utf-8",
+        "cache-control": "no-cache",
+      });
+      res.end(svg);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.writeHead(500, { "content-type": "application/json" });
+      res.end(JSON.stringify({ error: msg }));
+    }
+    return;
+  }
+
   if (url.pathname === "/api/git/status") {
     const path = url.searchParams.get("path");
     if (!path) {
@@ -270,6 +299,51 @@ async function handleHttp(req: IncomingMessage, res: ServerResponse, opts: Serve
   }
 
   await serveStatic(url.pathname, opts.staticDir, res);
+}
+
+function buildPairingUrl(req: IncomingMessage, opts: ServerOptions): string {
+  const requestHost = req.headers.host ?? `localhost:${opts.port}`;
+  const [hostname, portStr] = splitHostPort(requestHost);
+  const reachableHost = isLoopback(hostname) ? (firstLanIp() ?? hostname) : hostname;
+  const proto =
+    (req.headers["x-forwarded-proto"] as string | undefined) ??
+    ((req.socket as { encrypted?: boolean }).encrypted ? "https" : "http");
+  const url = new URL(`${proto}://${reachableHost}:${portStr ?? opts.port}/`);
+  if (opts.token) url.searchParams.set("token", opts.token);
+  return url.toString();
+}
+
+function splitHostPort(hostHeader: string): [string, string | null] {
+  // IPv6 literals come wrapped in brackets: [::1]:8080
+  if (hostHeader.startsWith("[")) {
+    const close = hostHeader.indexOf("]");
+    if (close === -1) return [hostHeader, null];
+    const host = hostHeader.slice(0, close + 1);
+    const rest = hostHeader.slice(close + 1);
+    return [host, rest.startsWith(":") ? rest.slice(1) : null];
+  }
+  const idx = hostHeader.lastIndexOf(":");
+  if (idx === -1) return [hostHeader, null];
+  return [hostHeader.slice(0, idx), hostHeader.slice(idx + 1)];
+}
+
+function isLoopback(host: string): boolean {
+  return (
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "0.0.0.0" ||
+    host === "::1" ||
+    host === "[::1]"
+  );
+}
+
+function firstLanIp(): string | null {
+  for (const list of Object.values(networkInterfaces())) {
+    for (const i of list ?? []) {
+      if (i.family === "IPv4" && !i.internal) return i.address;
+    }
+  }
+  return null;
 }
 
 const MAX_BODY_BYTES = 1 * 1024 * 1024; // 1 MB

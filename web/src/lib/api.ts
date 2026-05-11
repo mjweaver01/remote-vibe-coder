@@ -111,6 +111,10 @@ export function fetchConfig(signal?: AbortSignal): Promise<ServerConfig> {
   return json<ServerConfig>("/api/config", signal);
 }
 
+export function fetchPairingUrl(signal?: AbortSignal): Promise<{ url: string }> {
+  return json<{ url: string }>("/api/pairing-url", signal);
+}
+
 // ---------- Git ----------
 
 export interface GitFileStatus {

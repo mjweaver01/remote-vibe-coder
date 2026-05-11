@@ -9,6 +9,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: DEV_SERVER_PORT,
+    host: true,
+    allowedHosts: true,
     proxy: {
       "/api": `http://localhost:${DEV_NODE_PORT}`,
       "/assets/monaco": `http://localhost:${DEV_NODE_PORT}`,

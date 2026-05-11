@@ -33,6 +33,8 @@ export {
   Mic,
   MicOff,
   Plus,
+  QrCode,
+  ScanLine,
   RefreshCw,
   RotateCcw,
   Skull,
