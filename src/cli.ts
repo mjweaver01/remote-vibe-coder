@@ -5,7 +5,9 @@ import { networkInterfaces } from "node:os";
 import qrcode from "qrcode-terminal";
 import { startServer } from "./server.ts";
 import { generateToken } from "./auth.ts";
+import { ensureSelfSignedCert, loadCertFromFiles } from "./certs.ts";
 import { expandHome } from "./files.ts";
+import type { TlsConfig } from "./server.ts";
 
 interface Flags {
   port: number;
@@ -15,6 +17,9 @@ interface Flags {
   command: string;
   idleTimeoutMs: number | null;
   domain: string | null;
+  https: boolean;
+  certPath: string | null;
+  keyPath: string | null;
   help: boolean;
 }
 
@@ -27,6 +32,9 @@ function parseArgs(argv: string[]): Flags {
     command: "claude",
     idleTimeoutMs: null,
     domain: null,
+    https: false,
+    certPath: null,
+    keyPath: null,
     help: false,
   };
   let tokenFlagSeen = false;
@@ -86,6 +94,17 @@ function parseArgs(argv: string[]): Flags {
       case "--domain":
         flags.domain = next(a);
         break;
+      case "--https":
+        flags.https = true;
+        break;
+      case "--cert":
+        flags.certPath = resolve(expandHome(next(a)));
+        flags.https = true;
+        break;
+      case "--key":
+        flags.keyPath = resolve(expandHome(next(a)));
+        flags.https = true;
+        break;
       case "--help":
       case "-h":
         flags.help = true;
@@ -119,6 +138,9 @@ Options:
       --no-token         Skip token (insecure on LAN)
   -c, --command <bin>    Command to run in each session (default: claude)
       --idle-timeout <m> Kill sessions idle for more than <m> minutes
+      --https            Serve over TLS using an auto-generated self-signed cert
+      --cert <path>      Use a custom TLS cert (implies --https)
+      --key <path>       Use a custom TLS key  (implies --https)
   -h, --help             Show this help
 `);
 }
@@ -178,6 +200,21 @@ async function main() {
 
   const staticDir = locateStaticDir();
 
+  let tls: TlsConfig | null = null;
+  let tlsGenerated = false;
+  if (flags.https) {
+    if (flags.certPath && flags.keyPath) {
+      tls = await loadCertFromFiles(flags.certPath, flags.keyPath);
+    } else if (flags.certPath || flags.keyPath) {
+      console.error("error: --cert and --key must be provided together");
+      process.exit(2);
+    } else {
+      const pair = await ensureSelfSignedCert();
+      tls = { cert: pair.cert, key: pair.key };
+      tlsGenerated = pair.generated;
+    }
+  }
+
   const server = await startServer({
     port: flags.port,
     host: flags.host,
@@ -186,6 +223,7 @@ async function main() {
     staticDir,
     command: flags.command,
     idleTimeoutMs: flags.idleTimeoutMs ?? undefined,
+    tls,
   });
 
   const reset = "\x1b[0m";
@@ -194,9 +232,11 @@ async function main() {
   const cyan = "\x1b[36m";
   const yellow = "\x1b[33m";
 
+  const scheme = tls ? "https" : "http";
+
   if (process.env.RVC_DEV) {
     console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
-    console.log(`${dim}api${reset}  http://${flags.host}:${flags.port}`);
+    console.log(`${dim}api${reset}  ${scheme}://${flags.host}:${flags.port}`);
     return;
   }
 
@@ -204,6 +244,11 @@ async function main() {
   console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
   console.log(`${dim}root:${reset}  ${flags.root}`);
   console.log(`${dim}host:${reset}  ${flags.host}:${flags.port}`);
+  if (tls) {
+    console.log(
+      `${dim}tls:${reset}   ${tlsGenerated ? "self-signed (newly generated)" : "self-signed (cached)"}`
+    );
+  }
   console.log("");
 
   const urls: string[] = [];
@@ -212,7 +257,7 @@ async function main() {
     urls.push(`${base}/${flags.token ? `?token=${flags.token}` : ""}`);
   } else if (flags.host === "0.0.0.0") {
     for (const addr of lanAddresses()) {
-      const u = `http://${addr}:${flags.port}/${flags.token ? `?token=${flags.token}` : ""}`;
+      const u = `${scheme}://${addr}:${flags.port}/${flags.token ? `?token=${flags.token}` : ""}`;
       urls.push(u);
     }
     if (urls.length === 0) urls.push(server.url);

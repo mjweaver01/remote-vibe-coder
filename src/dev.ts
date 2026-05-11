@@ -21,17 +21,27 @@ function tag(label: string, color: string) {
   };
 }
 
+// Both processes share the same self-signed cert (the Vite dev server reads
+// it via RVC_HTTPS in vite.config.ts) so the browser sees a single origin.
+const https = process.argv.includes("--https") || process.env.RVC_HTTPS === "1";
+
+const serverArgs = ["watch", "src/cli.ts", "--port", "4311"];
+if (https) serverArgs.push("--https");
+
 // Node server on an internal port — Vite dev server proxies /api and /ws to it.
-const server = spawn(bin("tsx"), ["watch", "src/cli.ts", "--port", "4311"], {
+const server = spawn(bin("tsx"), serverArgs, {
   cwd: root,
-  env: { ...process.env, RVC_DEV: "1" },
+  env: { ...process.env, RVC_DEV: "1", ...(https ? { RVC_HTTPS: "1" } : {}) },
   stdio: ["inherit", "pipe", "pipe"],
 });
 server.stdout!.on("data", tag("server", "32"));
 server.stderr!.on("data", tag("server", "32"));
 
 // Vite dev server — real HMR, proxies to Node server above.
-const client = spawn(bin("vite"), ["dev"], { cwd: root });
+const client = spawn(bin("vite"), ["dev"], {
+  cwd: root,
+  env: { ...process.env, ...(https ? { RVC_HTTPS: "1" } : {}) },
+});
 client.stdout.on("data", tag("client", "36"));
 client.stderr.on("data", tag("client", "36"));
 

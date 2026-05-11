@@ -13,6 +13,7 @@
   ],
   "scripts": {
     "dev": "tsx src/dev.ts",
+    "dev:https": "tsx src/dev.ts --https",
     "build": "tsx src/build.ts",
     "start": "node dist/cli.js",
     "local": "node dist/cli.js --root ~/Websites --host 0.0.0.0 --port 80",
@@ -46,6 +47,7 @@
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-router": "7.15.0",
+    "selfsigned": "^5.5.0",
     "ws": "8.20.0"
   },
   "devDependencies": {

@@ -1,11 +1,17 @@
-import { serve } from "@hono/node-server";
-import { serveStatic } from "@hono/node-server/serve-static";
-import { Hono } from "hono";
+import { createServer as createHttpsServer } from "node:https";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+import { serveStatic } from "@hono/node-server/serve-static";
 import { createApiRoutes } from "./api.ts";
 import { SessionManager } from "./sessions.ts";
 import { attachWebSocket } from "./ws.ts";
+
+export interface TlsConfig {
+  cert: string;
+  key: string;
+}
 
 export interface ServerOptions {
   port: number;
@@ -15,6 +21,7 @@ export interface ServerOptions {
   staticDir: string;
   command: string;
   idleTimeoutMs?: number;
+  tls?: TlsConfig | null;
 }
 
 export interface RunningServer {
@@ -44,13 +51,21 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     }
   });
 
-  const server = serve({ fetch: app.fetch, port: opts.port, hostname: opts.host });
+  const server = opts.tls
+    ? serve({
+        fetch: app.fetch,
+        port: opts.port,
+        hostname: opts.host,
+        createServer: createHttpsServer,
+        serverOptions: { cert: opts.tls.cert, key: opts.tls.key },
+      })
+    : serve({ fetch: app.fetch, port: opts.port, hostname: opts.host });
   const ws = attachWebSocket(server, sessions, opts.token);
 
   await new Promise<void>((ready) => server.once("listening", () => ready()));
 
   return {
-    url: buildUrl(opts.host, opts.port, opts.token),
+    url: buildUrl(opts.host, opts.port, opts.token, !!opts.tls),
     close: async () => {
       sessions.close();
       sessions.killAll();
@@ -60,8 +75,9 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   };
 }
 
-function buildUrl(host: string, port: number, token: string | null): string {
+function buildUrl(host: string, port: number, token: string | null, tls: boolean): string {
   const displayHost = host === "0.0.0.0" ? "localhost" : host;
-  const base = `http://${displayHost}:${port}/`;
+  const scheme = tls ? "https" : "http";
+  const base = `${scheme}://${displayHost}:${port}/`;
   return token ? `${base}?token=${token}` : base;
 }
