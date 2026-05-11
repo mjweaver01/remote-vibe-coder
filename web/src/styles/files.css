@@ -190,6 +190,8 @@
   align-items: center;
   gap: 6px;
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
   border: 0;
   background: transparent;
   color: var(--editor-text);
@@ -248,6 +250,7 @@
 }
 .tree-name {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }

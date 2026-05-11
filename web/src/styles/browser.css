@@ -197,13 +197,6 @@
 }
 
 /* ----- Active-session row variant ----- */
-.row-session {
-  background: linear-gradient(180deg, var(--accent-soft), transparent);
-  border-left: 2px solid var(--accent);
-}
-.row-session .row-icon {
-  color: var(--accent);
-}
 
 /* ----- History row variant ----- */
 .row-history {

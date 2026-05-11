@@ -12,7 +12,20 @@ export default defineConfig({
     host: true,
     allowedHosts: true,
     proxy: {
-      "/api": `http://localhost:${DEV_NODE_PORT}`,
+      "/api": {
+        target: `http://localhost:${DEV_NODE_PORT}`,
+        changeOrigin: false,
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, req) => {
+            const host = req.headers.host;
+            if (host) {
+              proxyReq.setHeader("x-forwarded-host", host);
+              const idx = host.lastIndexOf(":");
+              if (idx !== -1) proxyReq.setHeader("x-forwarded-port", host.slice(idx + 1));
+            }
+          });
+        },
+      },
       "/assets/monaco": `http://localhost:${DEV_NODE_PORT}`,
       "/ws": {
         target: `ws://localhost:${DEV_NODE_PORT}`,

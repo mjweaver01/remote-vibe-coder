@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router";
-import { ArrowLeft, ChevronRight, History, Inbox, Plus, RotateCcw, SquareTerminal } from "../components/icons.ts";
+import { useNavigate, useParams } from "react-router";
+import { ArrowLeft, ChevronRight, History, Inbox, Plus, RotateCcw } from "../components/icons.ts";
+import { ActiveSessionsList } from "../components/ActiveSessionsList.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { LoadingState } from "../components/LoadingState.tsx";
 import { Topbar } from "../components/Topbar.tsx";
@@ -82,28 +83,11 @@ export function PickerPage() {
       />
 
       <div className="page-body">
-        {activeSessions.length > 0 ? (
-          <section className="rows">
-            <div className="rows-title">Active sessions</div>
-            {activeSessions.map((s) => (
-              <Link key={s.id} to={`/s/${s.id}`} className="row row-session">
-                <SquareTerminal size={18} className="row-icon" aria-hidden="true" />
-                <div className="row-body">
-                  <div className="row-name" title={s.title || "Session"}>
-                    {s.title || "Session"}
-                    {activeSessionIds.has(s.id) ? (
-                      <span className="session-activity-dot" aria-label="Active" />
-                    ) : null}
-                  </div>
-                  <div className="row-meta">
-                    {s.viewers === 1 ? "1 viewer" : `${s.viewers} viewers`}
-                  </div>
-                </div>
-                <ChevronRight size={16} className="row-chev" aria-hidden="true" />
-              </Link>
-            ))}
-          </section>
-        ) : null}
+        <ActiveSessionsList
+          sessions={activeSessions}
+          activeIds={activeSessionIds}
+          fallback={() => "Session"}
+        />
 
         <div className="picker-actions">
           <button

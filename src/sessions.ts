@@ -150,6 +150,16 @@ export class SessionManager {
         : mode.kind === "continue"
           ? await mostRecentConversationId(cwd)
           : undefined;
+
+    // If a live session already owns this conversation, hand that one back
+    // instead of spawning a second PTY against the same JSONL.
+    if (knownConvId) {
+      for (const existing of this.sessions.values()) {
+        if (!existing.ended && existing.conversationId === knownConvId) {
+          return this.toInfo(existing);
+        }
+      }
+    }
     const ptyProc = spawn(this.command, args, {
       name: "xterm-256color",
       cols: Math.max(20, cols | 0),

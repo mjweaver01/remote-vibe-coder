@@ -159,15 +159,23 @@ function errMessage(err: unknown): string {
 }
 
 function buildPairingUrl(req: IncomingMessage, ctx: ApiContext): string {
-  const requestHost = req.headers.host ?? `localhost:${ctx.port}`;
-  const [hostname, portStr] = splitHostPort(requestHost);
+  const forwardedHost = firstHeader(req.headers["x-forwarded-host"]);
+  const forwardedPort = firstHeader(req.headers["x-forwarded-port"]);
+  const requestHost = forwardedHost ?? req.headers.host ?? `localhost:${ctx.port}`;
+  const [hostname, hostPort] = splitHostPort(requestHost);
+  const portStr = forwardedPort ?? hostPort;
   const reachableHost = isLoopback(hostname) ? (firstLanIp() ?? hostname) : hostname;
   const proto =
-    (req.headers["x-forwarded-proto"] as string | undefined) ??
+    firstHeader(req.headers["x-forwarded-proto"]) ??
     ((req.socket as { encrypted?: boolean }).encrypted ? "https" : "http");
   const url = new URL(`${proto}://${reachableHost}:${portStr ?? ctx.port}/`);
   if (ctx.token) url.searchParams.set("token", ctx.token);
   return url.toString();
+}
+
+function firstHeader(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value?.split(",")[0]?.trim() || undefined;
 }
 
 function splitHostPort(hostHeader: string): [string, string | null] {

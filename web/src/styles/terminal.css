@@ -46,6 +46,20 @@
   }
 }
 
+/* On touch devices, route taps on the rendered text layer past xterm so
+   they bubble up as scroll gestures. Input goes through the mobile bar
+   and Keybar instead. The viewport itself stays interactive so native
+   touch-scroll on the scrollback still works. */
+@media (hover: none) {
+  .xterm-screen,
+  .xterm-helper-textarea {
+    pointer-events: none;
+  }
+  .xterm-viewport {
+    touch-action: pan-y;
+  }
+}
+
 /* ----- Replay banner (shown briefly when joining an in-flight session) ----- */
 .term-replay-banner {
   position: absolute;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   AudioWaveform,
   ChevronRight,
@@ -7,10 +7,10 @@ import {
   History,
   Inbox,
   Search,
-  SquareTerminal,
   Star,
   X,
 } from "../components/icons.ts";
+import { ActiveSessionsList } from "../components/ActiveSessionsList.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { LoadingState } from "../components/LoadingState.tsx";
 import { PairDeviceButton } from "../components/PairDevice.tsx";
@@ -88,29 +88,8 @@ export function BrowserPage() {
 
         {data ? (
           <>
-            {sessions.length > 0 ? (
-              <section className="rows">
-                <div className="rows-title">Active sessions</div>
-                {sessions.map((s) => (
-                  <Link key={s.id} to={`/s/${s.id}`} className="row row-session">
-                    <SquareTerminal size={18} className="row-icon" aria-hidden="true" />
-                    <div className="row-body">
-                      <div className="row-name" title={s.title || s.cwdLabel}>
-                        {s.title || s.cwdLabel}
-                        {activeSessionIds.has(s.id) ? (
-                          <span className="session-activity-dot" aria-label="Active" />
-                        ) : null}
-                      </div>
-                      <div className="row-meta">
-                        {s.title ? `${s.cwdLabel} · ` : ""}
-                        {s.viewers === 1 ? "1 viewer" : `${s.viewers} viewers`}
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="row-chev" aria-hidden="true" />
-                  </Link>
-                ))}
-              </section>
-            ) : null}
+            <ActiveSessionsList sessions={sessions} activeIds={activeSessionIds} showCwd />
+
 
             {favorites.length > 0 ? (
               <section className="rows">
