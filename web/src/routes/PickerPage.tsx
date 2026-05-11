@@ -162,7 +162,7 @@ export function PickerPage() {
                   type="button"
                   className="row row-history"
                   disabled={busy}
-                  onClick={() => startSession({ kind: "continue" })}
+                  onClick={() => startSession({ kind: "resume", conversationId: s.id })}
                 >
                   <div className="row-body">
                     <div className="row-name">{s.preview || "(no preview available)"}</div>
