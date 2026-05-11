@@ -1,0 +1,202 @@
+/* ============================================================================
+   Base — reset, document, shared animations, buttons.
+   ========================================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.45 var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+body {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* ----- Animations (used across components) ----- */
+.spin {
+  animation: rvc-spin 1.2s linear infinite;
+}
+@keyframes rvc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes rvc-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 var(--danger-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+}
+@keyframes rvc-success-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--success-glow);
+  }
+  60% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* ----- Buttons (base reset + .btn/.icon-btn variants) ----- */
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 0;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.btn,
+.icon-btn {
+  transition:
+    background var(--t-base) ease,
+    border-color var(--t-base) ease,
+    color var(--t-base) ease,
+    transform var(--t-fast) ease;
+}
+.btn:active:not(:disabled),
+.icon-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.92);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  min-height: 36px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  white-space: nowrap;
+}
+@media (hover: hover) {
+  .btn:hover:not(:disabled) {
+    background: var(--bg-3);
+    border-color: var(--border-strong);
+  }
+}
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
+@media (hover: hover) {
+  .btn.primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+    border-color: var(--accent-strong);
+  }
+}
+.btn.primary.is-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: var(--on-success);
+  animation: rvc-success-flash 1.4s ease-out;
+}
+.btn.danger {
+  color: var(--danger);
+  border-color: var(--danger-ring);
+}
+@media (hover: hover) {
+  .btn.danger:hover:not(:disabled) {
+    background: var(--danger-soft);
+  }
+}
+.btn.big {
+  min-height: 52px;
+  font-size: 15px;
+  border-radius: var(--radius-lg);
+  padding: 0 20px;
+}
+.btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  border-radius: var(--radius-md);
+  color: var(--text);
+}
+.icon-btn-sm {
+  width: 32px;
+  height: 32px;
+}
+@media (hover: hover) {
+  .icon-btn:hover:not(:disabled) {
+    background: var(--bg-3);
+    border-color: var(--border-strong);
+  }
+}
+.icon-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.icon-btn-danger {
+  color: var(--danger);
+  border-color: var(--danger-ring);
+}
+@media (hover: hover) {
+  .icon-btn-danger:hover:not(:disabled) {
+    background: var(--danger-soft);
+  }
+}

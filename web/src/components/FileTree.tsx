@@ -94,7 +94,10 @@ export function FileTree({ rootPath, selectedPath, onSelectFile, changedPaths }:
               <span className="tree-arrow-empty" aria-hidden="true" />
             )}
           </span>
-          <span className="tree-icon" aria-hidden="true">
+          <span
+            className={`tree-icon${entry.isDir ? " tree-icon-dir" : " tree-icon-file"}`}
+            aria-hidden="true"
+          >
             {entry.isDir ? <Folder size={14} /> : <FileIcon size={14} />}
           </span>
           <span className="tree-name">{entry.name}</span>

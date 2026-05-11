@@ -1,0 +1,400 @@
+/* ============================================================================
+   Terminal — session pane shell, xterm host, replay banner, mobile input,
+   and the gameboy-style keybar.
+   ========================================================================= */
+
+/* ----- Session pane shell ----- */
+.page-session {
+  background: var(--bg-black);
+}
+.tab-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+/* ----- Terminal pane ----- */
+.tab-pane-terminal {
+  background: var(--bg-black);
+}
+.term-host-wrapper {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  padding: 6px;
+}
+.xterm-host {
+  position: absolute;
+  inset: 6px;
+}
+.xterm,
+.xterm-viewport {
+  background: var(--bg-black) !important;
+}
+.xterm-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+.xterm-viewport::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+@media (hover: hover) {
+  .xterm-viewport::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
+}
+
+/* ----- Replay banner (shown briefly when joining an in-flight session) ----- */
+.term-replay-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--replay-banner-bg);
+  border: 1px solid var(--accent-ring-strong);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-banner);
+  z-index: var(--z-banner);
+  pointer-events: none;
+  animation: rvc-replay-banner 1.8s ease-out forwards;
+}
+.term-replay-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+@keyframes rvc-replay-banner {
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  75% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
+
+/* Off-screen soft-keyboard target. Mobile only — desktop just uses xterm input. */
+.kbd-trap {
+  position: absolute;
+  left: -10000px;
+  top: 0;
+  opacity: 0;
+  pointer-events: none;
+  font-size: 16px;
+}
+
+/* ----- Mobile input bar (hidden on desktop) ----- */
+.mobile-input-bar {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-input-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-1);
+    flex: 0 0 auto;
+  }
+  .mobile-input {
+    flex: 1;
+    height: 42px;
+    padding: 0 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-md);
+    color: var(--text);
+    font-size: 16px;
+    font-family: var(--font-mono);
+    outline: none;
+    min-width: 0;
+  }
+  .mobile-input::placeholder {
+    color: var(--text-dim);
+  }
+  .mobile-input:focus {
+    border-color: var(--accent);
+  }
+  .mobile-input-send {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-pill);
+    color: var(--on-accent);
+    cursor: pointer;
+    box-shadow: var(--shadow-send);
+    transition:
+      background var(--t-base) ease,
+      transform var(--t-fast) ease,
+      box-shadow var(--t-base) ease;
+  }
+  @media (hover: hover) {
+    .mobile-input-send:hover {
+      background: var(--accent-strong);
+    }
+  }
+  .mobile-input-send:active {
+    transform: translateY(1px);
+    box-shadow: var(--shadow-send-pressed);
+  }
+  .mobile-input-send:disabled {
+    opacity: 0.5;
+    box-shadow: none;
+  }
+}
+
+/* ----- Keybar shared chrome ----- */
+.keybar {
+  border-top: 1px solid var(--border);
+  background: var(--keybar-bg);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.keybar-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 38px;
+  min-width: 44px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  border-radius: var(--radius-md);
+}
+.keybar-btn:active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.keybar-btn-yes {
+  background: var(--success-soft);
+  border-color: var(--success-ring);
+  color: var(--success);
+  font-weight: 600;
+}
+.keybar-btn-no {
+  background: var(--danger-soft);
+  border-color: var(--danger-ring);
+  color: var(--danger);
+  font-weight: 600;
+}
+.keybar-btn-other {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring-strong);
+  color: var(--accent);
+  font-weight: 600;
+}
+.keybar-btn-voice.is-recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--on-danger);
+  animation: rvc-pulse 1.1s ease-in-out infinite;
+}
+.keybar-btn-voice.is-busy {
+  cursor: progress;
+}
+
+/* ----- Gameboy layout (mobile keybar) ----- */
+.keybar-mobile {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(10px, 3vw, 16px);
+  padding: 14px clamp(12px, 4vw, 18px) calc(14px + var(--safe-bottom));
+  max-height: 320px;
+}
+
+/* Answer diamond — 1 top · 2 left · 3 right · mic bottom */
+.gb-diamond {
+  width: 100%;
+  max-width: 160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-areas:
+    ". y1 ."
+    "y2 hub y3"
+    ". en .";
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: clamp(5px, 1.5vw, 8px);
+  aspect-ratio: 1;
+}
+.gb-diamond-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-weight: 700;
+  border-radius: 50%;
+  aspect-ratio: 1;
+  cursor: pointer;
+  border: 1px solid transparent;
+  line-height: 1;
+}
+.gb-diamond-btn:active {
+  filter: brightness(1.3);
+}
+.gb-diamond-num {
+  font-size: clamp(14px, 4vw, 18px);
+  font-weight: 700;
+}
+.gb-diamond-cap {
+  font-size: clamp(8px, 2.2vw, 10px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.gb-diamond-hub {
+  grid-area: hub;
+  background: var(--hub-bg);
+  border: 1px solid var(--hub-border);
+  border-radius: 50%;
+  margin: 18%;
+}
+.gb-btn-yes {
+  grid-area: y1;
+  background: var(--success-soft);
+  border-color: var(--success-ring);
+  color: var(--success);
+}
+.gb-btn-no {
+  grid-area: y2;
+  background: var(--danger-soft);
+  border-color: var(--danger-ring);
+  color: var(--danger);
+}
+.gb-btn-other {
+  grid-area: y3;
+  background: var(--accent-soft);
+  border-color: var(--accent-ring-strong);
+  color: var(--accent);
+}
+
+/* Mic in diamond bottom slot — VoiceButton fills the cell */
+.gb-diamond-mic {
+  grid-area: en;
+  display: flex;
+}
+.gb-diamond-mic .keybar-btn {
+  flex: 1;
+  aspect-ratio: 1;
+  height: auto;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring-strong);
+  color: var(--accent);
+}
+.gb-diamond-mic .keybar-btn.is-recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--editor-text-bright);
+  animation: rvc-pulse 0.8s ease-in-out infinite;
+}
+
+/* A/B action buttons — Enter + Esc, spans bottom of both columns */
+.gb-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: row;
+  gap: clamp(12px, 4vw, 20px);
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 4px;
+}
+.gb-action-btn {
+  width: min(22vw, 80px);
+  height: min(10vw, 38px);
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.gb-action-btn:active {
+  filter: brightness(1.3);
+}
+.gb-action-enter {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring-strong);
+  color: var(--accent);
+}
+.gb-action-esc {
+  background: var(--hub-pad);
+  border-color: var(--border-strong);
+  color: var(--text-dim);
+  font-size: min(2.5vw, 11px);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* D-pad cross — Up top · Tab left · Kill right · Clear bottom */
+.gb-dpad {
+  width: 100%;
+  max-width: 160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-areas:
+    ". up ."
+    "tab hub kill"
+    ". clr .";
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: clamp(5px, 1.5vw, 8px);
+  aspect-ratio: 1;
+}
+.gb-dpad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hub-pad);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: clamp(9px, 2.5vw, 11px);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.gb-dpad-btn:active {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.gb-dpad-up   { grid-area: up; }
+.gb-dpad-tab  { grid-area: tab; }
+.gb-dpad-kill {
+  grid-area: kill;
+  color: var(--danger);
+  border-color: var(--danger-ring);
+}
+.gb-dpad-clr  { grid-area: clr; }
+.gb-dpad-hub {
+  grid-area: hub;
+  background: var(--hub-bg);
+  border: 1px solid var(--hub-border);
+  border-radius: 50%;
+  margin: 20%;
+}

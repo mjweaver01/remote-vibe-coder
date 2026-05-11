@@ -105,6 +105,7 @@ export function GitPanel({ cwd, onSelectFile, selectedPath }: Props) {
   const toast = useToast();
   const [commitMsg, setCommitMsg] = useState("");
   const [committing, setCommitting] = useState(false);
+  const [commitSuccess, setCommitSuccess] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -139,6 +140,8 @@ export function GitPanel({ cwd, onSelectFile, selectedPath }: Props) {
       const result = await postGitCommit(cwd, commitMsg.trim());
       toast.push("success", `Committed ${result.hash ? result.hash.slice(0, 7) : ""}`);
       setCommitMsg("");
+      setCommitSuccess(true);
+      window.setTimeout(() => setCommitSuccess(false), 1400);
       reload();
     } catch (err) {
       toast.push("error", err instanceof Error ? err.message : "Commit failed");
@@ -213,12 +216,18 @@ export function GitPanel({ cwd, onSelectFile, selectedPath }: Props) {
           />
           <button
             type="button"
-            className="btn primary git-commit-btn"
+            className={`btn primary git-commit-btn${commitSuccess ? " is-success" : ""}`}
             disabled={!commitMsg.trim() || committing}
             onClick={() => void commit()}
           >
-            <GitCommit size={13} aria-hidden="true" />
-            <span>{committing ? "Committing…" : "Commit"}</span>
+            {commitSuccess ? (
+              <Check size={13} aria-hidden="true" />
+            ) : (
+              <GitCommit size={13} aria-hidden="true" />
+            )}
+            <span>
+              {commitSuccess ? "Committed" : committing ? "Committing…" : "Commit"}
+            </span>
           </button>
         </div>
       )}

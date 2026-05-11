@@ -1,0 +1,290 @@
+/* ============================================================================
+   Files pane — toolbar, tabs, viewer, tree, monaco host.
+   Uses the VSCode-derived editor palette (--editor-*).
+   ========================================================================= */
+
+.tab-pane-files {
+  background: var(--editor-bg);
+  color: var(--editor-text);
+}
+.files-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--editor-border);
+  background: var(--editor-bg-alt);
+}
+.files-tree-toggle {
+  display: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: var(--bg-1);
+  border-radius: var(--radius-md);
+  color: var(--text);
+}
+.files-status {
+  flex: 1;
+  font-size: 12px;
+  color: var(--editor-text-mute);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.files-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+.files-tree {
+  width: var(--tree-width);
+  flex: 0 0 var(--tree-width);
+  border-right: 1px solid var(--editor-border);
+  overflow: auto;
+  background: var(--editor-bg);
+  padding: 4px 0;
+}
+.files-viewer {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--editor-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ----- Open file tabs ----- */
+.files-tabs {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--editor-bg-alt);
+  border-bottom: 1px solid var(--editor-bg);
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.files-tabs::-webkit-scrollbar {
+  display: none;
+}
+.files-tab {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  border-right: 1px solid var(--editor-bg);
+  background: var(--editor-bg-tab);
+  min-width: 80px;
+  max-width: 180px;
+}
+.files-tab.is-active {
+  background: var(--editor-bg);
+  border-top: 1px solid var(--accent);
+}
+.files-tab-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  color: var(--editor-text-soft);
+  font-size: 13px;
+  padding: 6px 4px 6px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.files-tab.is-active .files-tab-label {
+  color: var(--editor-text-bright);
+}
+.files-tab.is-changed .files-tab-label {
+  color: var(--git-modified);
+}
+@media (hover: hover) {
+  .files-tab-label:hover {
+    background: transparent;
+  }
+}
+.files-tab-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: var(--editor-close);
+  padding: 4px;
+  margin: 0 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  opacity: 0;
+}
+.files-tab.is-active .files-tab-close {
+  opacity: 1;
+}
+@media (hover: hover) {
+  .files-tab:hover .files-tab-close {
+    opacity: 1;
+  }
+  .files-tab-close:hover {
+    background: var(--editor-close-bg-hover);
+    color: var(--editor-text);
+  }
+}
+@media (hover: none) {
+  .files-tab-close {
+    opacity: 1;
+  }
+}
+
+.files-viewer-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.monaco-host {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.monaco-host .monaco-editor {
+  position: absolute !important;
+  inset: 0 !important;
+}
+
+/* ----- File tree ----- */
+.tree {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  padding-bottom: 12px;
+}
+.tree-root-label {
+  padding: 6px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--editor-text-dim);
+}
+.tree-loading-root {
+  padding: 16px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--editor-text);
+  text-align: left;
+  border-radius: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-right: 8px;
+  min-height: 26px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .tree-row:hover {
+    background: var(--editor-hover);
+  }
+}
+.tree-row.is-selected {
+  background: var(--editor-selected);
+  color: var(--editor-text-bright);
+}
+.tree-row.tree-loading,
+.tree-row.tree-empty,
+.tree-row.tree-error {
+  color: var(--editor-text-dim);
+  font-style: italic;
+  cursor: default;
+}
+.tree-row.tree-error {
+  color: var(--danger);
+  font-style: normal;
+}
+.tree-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  color: var(--editor-text-dim);
+}
+.tree-arrow-empty {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+}
+.tree-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-dim);
+}
+.tree-icon-dir {
+  color: var(--accent);
+}
+.tree-icon-file {
+  color: var(--text-dim);
+  opacity: 0.85;
+}
+.tree-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tree-row.is-changed .tree-name {
+  color: var(--git-modified);
+}
+.tree-changed-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--git-modified);
+}
+
+/* ----- Mobile: tree slides in from the left ----- */
+@media (max-width: 767px) {
+  .files-tree-toggle {
+    display: inline-flex;
+  }
+  .files-tree {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--tree-width-mobile);
+    max-width: var(--tree-width-mobile-max);
+    z-index: var(--z-topbar);
+    transform: translateX(-100%);
+    transition: transform var(--t-slow) ease;
+    box-shadow: var(--shadow-tray);
+  }
+  .files-body.tree-open .files-tree {
+    transform: translateX(0);
+  }
+  .files-body.tree-open::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--scrim);
+    z-index: var(--z-tray);
+  }
+}

@@ -19,7 +19,8 @@ export function Keybar({ onSend, voiceSlot }: Props) {
           title="Yes (1)"
           aria-label="Yes (1)"
         >
-          1
+          <span className="gb-diamond-num">1</span>
+          <span className="gb-diamond-cap">yes</span>
         </button>
         <button
           className="gb-diamond-btn gb-btn-no"
@@ -27,7 +28,8 @@ export function Keybar({ onSend, voiceSlot }: Props) {
           title="No (2)"
           aria-label="No (2)"
         >
-          2
+          <span className="gb-diamond-num">2</span>
+          <span className="gb-diamond-cap">no</span>
         </button>
         <div className="gb-diamond-hub" aria-hidden="true" />
         <button
@@ -36,7 +38,8 @@ export function Keybar({ onSend, voiceSlot }: Props) {
           title="Other (3)"
           aria-label="Other (3)"
         >
-          3
+          <span className="gb-diamond-num">3</span>
+          <span className="gb-diamond-cap">other</span>
         </button>
         <div className="gb-diamond-mic">{voiceSlot}</div>
       </div>

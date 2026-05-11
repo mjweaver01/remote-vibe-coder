@@ -1,0 +1,232 @@
+/* ============================================================================
+   Browser / picker rows — folder list, sessions, history, search field.
+   ========================================================================= */
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+.rows-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ----- Inline search field in section header ----- */
+.browser-search-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 240px;
+}
+.browser-search-icon {
+  position: absolute;
+  left: 7px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+.browser-search-input {
+  width: 100%;
+  height: 26px;
+  padding: 0 26px 0 24px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  letter-spacing: 0;
+  text-transform: none;
+  font-weight: 400;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.browser-search-input::placeholder {
+  color: var(--text-dim);
+}
+.browser-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.browser-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+.browser-search-clear {
+  position: absolute;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-dim);
+  border-radius: 3px;
+  border: 0;
+  background: transparent;
+}
+@media (hover: hover) {
+  .browser-search-clear:hover {
+    color: var(--text);
+    background: var(--hover-tint);
+  }
+}
+
+/* ----- Row (generic) ----- */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  text-align: left;
+  border-radius: 0;
+  color: var(--text);
+}
+@media (hover: hover) {
+  .row:hover {
+    background: var(--bg-2);
+  }
+}
+.row-icon {
+  flex: 0 0 auto;
+  margin-left: 16px;
+  color: var(--text-dim);
+}
+.row-body {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 0;
+}
+.row-name {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-meta {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-chev {
+  color: var(--text-dim);
+  margin-right: 14px;
+}
+
+/* ----- Folder row (browser homepage) ----- */
+.row-folder {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.row-folder .row-press {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  text-align: left;
+  color: var(--text);
+  border-radius: 0;
+}
+@media (hover: hover) {
+  .row-folder:hover .row-press {
+    background: var(--bg-2);
+  }
+}
+.row-folder .row-action {
+  flex: 0 0 auto;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin: 8px 8px 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--radius-pill);
+}
+@media (hover: hover) {
+  .row-folder .row-action:hover {
+    background: var(--accent-soft-hi);
+  }
+}
+.row-folder .row-star {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-dim);
+  padding: 6px 8px;
+  transition:
+    color var(--t-base),
+    background var(--t-base),
+    border-color var(--t-base);
+}
+.row-folder .row-star.is-starred {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+}
+@media (hover: hover) {
+  .row-folder .row-star:hover {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: var(--accent-ring);
+  }
+}
+
+/* ----- Active-session row variant ----- */
+.row-session {
+  background: linear-gradient(180deg, var(--accent-soft), transparent);
+  border-left: 2px solid var(--accent);
+}
+.row-session .row-icon {
+  color: var(--accent);
+}
+
+/* ----- History row variant ----- */
+.row-history {
+  align-items: stretch;
+}
+.row-history .row-body {
+  padding: 12px 16px 12px 0;
+}
+.row-history .row-name {
+  font-family: inherit;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.4;
+  margin-left: 16px;
+}
+.row-history .row-meta {
+  margin-left: 16px;
+  margin-top: 4px;
+}
+.row-history .row-chev {
+  align-self: center;
+}

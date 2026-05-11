@@ -1,0 +1,132 @@
+/* ============================================================================
+   Shell — app frame, page, topbar, tabs, connection banner.
+   ========================================================================= */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100%;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.page-body {
+  flex: 1;
+  overflow: auto;
+  padding-bottom: calc(20px + var(--safe-bottom));
+}
+
+/* ----- Topbar ----- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(10px + var(--safe-top)) 14px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  min-height: 56px;
+}
+.topbar-leading,
+.topbar-trailing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.topbar-titles {
+  flex: 1;
+  min-width: 0;
+}
+.topbar-title {
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topbar-subtitle {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+}
+
+/* ----- Connection banner ----- */
+.conn-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent-ring);
+}
+.conn-banner.conn-closed {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-bottom-color: var(--danger-ring);
+}
+
+/* ----- Tabs (within session page) ----- */
+.tabstrip {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 0 12px;
+  height: 44px;
+  font-size: 13px;
+  color: var(--text-dim);
+  background: transparent;
+}
+@media (hover: hover) {
+  .tab-btn:hover {
+    color: var(--text);
+  }
+}
+.tab-btn.is-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+/* ----- Picker actions container ----- */
+.page-picker .picker-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+/* ----- Desktop layout cap ----- */
+@media (min-width: 768px) {
+  .page-browser .page-body,
+  .page-picker .page-body {
+    max-width: var(--page-max-width);
+    margin: 0 auto;
+    width: 100%;
+  }
+}

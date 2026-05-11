@@ -19,6 +19,7 @@ export function SessionTerminal() {
   const toast = useToast();
 
   const [mobileInput, setMobileInput] = useState("");
+  const [replayBanner, setReplayBanner] = useState(false);
   const termRef = useRef<XTermHandle | null>(null);
   const kbdTrapRef = useRef<HTMLInputElement | null>(null);
   const joinedRef = useRef(false);
@@ -34,7 +35,11 @@ export function SessionTerminal() {
       if ("sessionId" in m && m.sessionId !== sessionId) return;
       switch (m.type) {
         case "attached":
-          if (m.replay) termRef.current?.write(m.replay);
+          if (m.replay) {
+            termRef.current?.write(m.replay);
+            setReplayBanner(true);
+            window.setTimeout(() => setReplayBanner(false), 1800);
+          }
           break;
         case "output":
           termRef.current?.write(m.data);
@@ -109,6 +114,12 @@ export function SessionTerminal() {
     <section className="tab-pane tab-pane-terminal">
       <div className="term-host-wrapper">
         <XTerm ref={termRef} onData={handleData} onResize={handleResize} />
+        {replayBanner && (
+          <div className="term-replay-banner" role="status" aria-live="polite">
+            <span className="term-replay-dot" aria-hidden="true" />
+            Joined session — replay loaded
+          </div>
+        )}
       </div>
       <form className="mobile-input-bar" onSubmit={handleMobileSubmit}>
         <input

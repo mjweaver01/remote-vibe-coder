@@ -1,0 +1,249 @@
+/* ============================================================================
+   Feedback surfaces — toast, empty/loading, modal, pairing gate.
+   ========================================================================= */
+
+/* ----- Toast ----- */
+.toast-viewport {
+  position: fixed;
+  bottom: calc(20px + var(--safe-bottom));
+  left: 14px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: var(--z-toast);
+  pointer-events: none;
+}
+@media (min-width: 768px) {
+  .toast-viewport {
+    left: auto;
+    right: 20px;
+    width: 360px;
+  }
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: var(--bg-1);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+  pointer-events: auto;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
+}
+.toast-error {
+  border-color: var(--danger-ring);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.toast-success {
+  border-color: var(--success-ring);
+  color: var(--success);
+}
+.toast-msg {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+.toast-close {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  opacity: 0.7;
+}
+@media (hover: hover) {
+  .toast-close:hover {
+    opacity: 1;
+    background: var(--hover-tint);
+  }
+}
+
+/* ----- Empty / loading states ----- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 24px;
+  gap: 12px;
+  color: var(--text-dim);
+}
+.empty-state-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--text-dim);
+  opacity: 0.7;
+}
+.empty-state.is-error .empty-state-icon {
+  color: var(--danger);
+  opacity: 0.9;
+}
+.empty-state-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.empty-state.is-error .empty-state-title {
+  color: var(--danger);
+}
+.empty-state-desc {
+  font-size: 13px;
+  max-width: 380px;
+  line-height: 1.5;
+}
+.empty-state-detail {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-1);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: inline-block;
+  word-break: break-all;
+}
+.empty-state-action {
+  margin-top: 4px;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 32px 16px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  animation: rvc-spin 1s linear infinite;
+}
+
+/* ----- Modal (used by Pair device) ----- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: var(--z-modal);
+  padding: 20px;
+}
+.modal {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  max-width: 380px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.modal-body {
+  padding: 18px;
+}
+.pair-modal-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.pair-qr {
+  background: #fff;
+  border-radius: var(--radius-md);
+  padding: 10px;
+  width: 280px;
+  height: 280px;
+}
+.pair-instructions {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+}
+.pair-instructions strong {
+  color: var(--text);
+}
+.pair-url {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  word-break: break-all;
+  text-align: center;
+}
+.pair-error {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+/* ----- Pairing gate (Capacitor first-launch) ----- */
+.pairing-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  padding: calc(20px + var(--safe-top)) 20px calc(20px + var(--safe-bottom));
+  background: var(--bg);
+}
+.pairing-gate-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  max-width: 420px;
+  text-align: center;
+}
+.pairing-gate-inner h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+.pairing-gate-inner p {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+.pairing-gate-inner code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+}
+.pairing-gate-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-ring);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+}
