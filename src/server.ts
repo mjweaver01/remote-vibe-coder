@@ -3,7 +3,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { createApiRoutes } from "./routes/api.ts";
+import { createApiRoutes } from "./api.ts";
 import { SessionManager } from "./sessions.ts";
 import { attachWebSocket } from "./ws.ts";
 

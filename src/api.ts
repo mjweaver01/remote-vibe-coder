@@ -3,11 +3,11 @@ import { bodyLimit } from "hono/body-limit";
 import { networkInterfaces } from "node:os";
 import type { IncomingMessage } from "node:http";
 import QRCode from "qrcode";
-import { tokensMatch } from "../auth.ts";
-import { gitDiff, listTree, readFileSafe } from "../code.ts";
-import { gitStatus, gitStage, gitUnstage, gitCommit } from "../git.ts";
-import { listFolders } from "../files.ts";
-import { listPastSessions } from "../history.ts";
+import { tokensMatch } from "./auth.ts";
+import { gitDiff, listTree, readFileSafe } from "./code.ts";
+import { gitStatus, gitStage, gitUnstage, gitCommit } from "./git.ts";
+import { listFolders } from "./files.ts";
+import { listPastSessions } from "./history.ts";
 
 export interface ApiContext {
   root: string;
