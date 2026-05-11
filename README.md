@@ -2,7 +2,7 @@
 
 # Remote Vibe Coder
 
-> Orchestrate Claude Code from anywhere
+Orchestrate Claude Code from anywhere
 
 ## What is RVC?
 
