@@ -4,7 +4,8 @@
   "description": "Run Claude Code remotely from your phone — browse a folder, open a PTY-backed Claude session, and answer prompts from any device on your LAN.",
   "type": "module",
   "bin": {
-    "remote-vibe-coder": "./dist/cli.js"
+    "remote-vibe-coder": "./dist/cli.js",
+    "rvc": "./dist/cli.js"
   },
   "files": [
     "dist",
