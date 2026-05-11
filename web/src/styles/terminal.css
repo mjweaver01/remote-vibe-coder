@@ -46,19 +46,6 @@
   }
 }
 
-/* On touch devices, route taps on the rendered text layer past xterm so
-   they bubble up as scroll gestures. Input goes through the mobile bar
-   and Keybar instead. The viewport itself stays interactive so native
-   touch-scroll on the scrollback still works. */
-@media (hover: none) {
-  .xterm-screen,
-  .xterm-helper-textarea {
-    pointer-events: none;
-  }
-  .xterm-viewport {
-    touch-action: pan-y;
-  }
-}
 
 /* ----- Replay banner (shown briefly when joining an in-flight session) ----- */
 .term-replay-banner {
@@ -105,73 +92,6 @@
   opacity: 0;
   pointer-events: none;
   font-size: 16px;
-}
-
-/* ----- Mobile input bar (hidden on desktop) ----- */
-.mobile-input-bar {
-  display: none;
-}
-
-@media (max-width: 767px) {
-  .mobile-input-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    border-top: 1px solid var(--border);
-    background: var(--bg-1);
-    flex: 0 0 auto;
-  }
-  .mobile-input {
-    flex: 1;
-    height: 42px;
-    padding: 0 12px;
-    background: var(--bg-2);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-md);
-    color: var(--text);
-    font-size: 16px;
-    font-family: var(--font-mono);
-    outline: none;
-    min-width: 0;
-  }
-  .mobile-input::placeholder {
-    color: var(--text-dim);
-  }
-  .mobile-input:focus {
-    border-color: var(--accent);
-  }
-  .mobile-input-send {
-    flex: 0 0 auto;
-    width: 56px;
-    height: 42px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent);
-    border: none;
-    border-radius: var(--radius-pill);
-    color: var(--on-accent);
-    cursor: pointer;
-    box-shadow: var(--shadow-send);
-    transition:
-      background var(--t-base) ease,
-      transform var(--t-fast) ease,
-      box-shadow var(--t-base) ease;
-  }
-  @media (hover: hover) {
-    .mobile-input-send:hover {
-      background: var(--accent-strong);
-    }
-  }
-  .mobile-input-send:active {
-    transform: translateY(1px);
-    box-shadow: var(--shadow-send-pressed);
-  }
-  .mobile-input-send:disabled {
-    opacity: 0.5;
-    box-shadow: none;
-  }
 }
 
 /* ----- Keybar shared chrome ----- */
@@ -326,6 +246,13 @@
   border-color: var(--danger);
   color: var(--editor-text-bright);
   animation: rvc-pulse 0.8s ease-in-out infinite;
+}
+/* When the AnalyserNode is running, replace the canned pulse with a
+   real-time ring driven by the mic volume (set on --vol per frame). */
+.gb-diamond-mic .keybar-btn.is-recording.has-vol {
+  animation: none;
+  box-shadow: 0 0 0 calc(2px + var(--vol, 0) * 18px) var(--danger-glow);
+  transition: box-shadow 60ms ease-out;
 }
 
 /* A/B action buttons — Enter + Esc, spans bottom of both columns */

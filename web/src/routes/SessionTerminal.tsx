@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext, useParams } from "react-router";
-import { CornerDownLeft } from "../components/icons.ts";
 import { Keybar } from "../components/Keybar.tsx";
 import { VoiceButton } from "../components/VoiceButton.tsx";
 import { XTerm, type XTermHandle } from "../components/XTerm.tsx";
@@ -18,7 +17,6 @@ export function SessionTerminal() {
   const ws = useWs();
   const toast = useToast();
 
-  const [mobileInput, setMobileInput] = useState("");
   const [replayBanner, setReplayBanner] = useState(false);
   const termRef = useRef<XTermHandle | null>(null);
   const kbdTrapRef = useRef<HTMLInputElement | null>(null);
@@ -103,13 +101,6 @@ export function SessionTerminal() {
   const sendKey = (data: string) => ws.send({ type: "input", sessionId, data });
   const sendVoiceText = (text: string) => ws.send({ type: "input", sessionId, data: text });
 
-  const handleMobileSubmit = (e: { preventDefault(): void }) => {
-    e.preventDefault();
-    const text = mobileInput.trim();
-    if (text) ws.send({ type: "input", sessionId, data: text + "\r" });
-    setMobileInput("");
-  };
-
   return (
     <section className="tab-pane tab-pane-terminal">
       <div className="term-host-wrapper">
@@ -121,22 +112,6 @@ export function SessionTerminal() {
           </div>
         )}
       </div>
-      <form className="mobile-input-bar" onSubmit={handleMobileSubmit}>
-        <input
-          className="mobile-input"
-          value={mobileInput}
-          onChange={(e) => setMobileInput(e.target.value)}
-          placeholder="Type a command…"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          enterKeyHint="send"
-        />
-        <button type="submit" className="mobile-input-send" aria-label="Send">
-          <CornerDownLeft size={16} aria-hidden="true" />
-        </button>
-      </form>
       <Keybar
         onSend={sendKey}
         voiceSlot={<VoiceButton onText={sendVoiceText} />}
