@@ -15,15 +15,17 @@ Start a session on your laptop, and finish on your phone. Start new sessions and
 Requires Node 25+ and the `claude` CLI on your PATH.
 
 ```bash
-npx remote-vibe-coder --root ~/Websites
+npx rvc --root ~/Websites
 ```
+
+> `rvc` is shorthand for `remote-vibe-coder` — both commands work.
 
 Open the printed URL. By default it binds to `127.0.0.1` only.
 
 ## Connect from your phone
 
 ```bash
-npx remote-vibe-coder --root ~/Websites --host 0.0.0.0
+npx rvc --root ~/Websites --host 0.0.0.0
 ```
 
 A QR code is printed on startup. Scan it with your phone — the URL includes a one-shot token that's stored in `sessionStorage` after the first load.
@@ -41,7 +43,7 @@ A QR code is printed on startup. Scan it with your phone — the URL includes a 
 ## CLI
 
 ```
-remote-vibe-coder [options]
+remote-vibe-coder [options]   # or: rvc [options]
 
   -p, --port <n>         Port to listen on (default: 4310)
   -H, --host <addr>      Bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
