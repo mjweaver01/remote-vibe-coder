@@ -28,6 +28,7 @@
 .xterm-host {
   position: absolute;
   inset: 6px;
+  touch-action: pan-y;
 }
 .xterm,
 .xterm-viewport {

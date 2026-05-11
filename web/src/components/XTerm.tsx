@@ -78,6 +78,90 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
 
     const ro = new ResizeObserver(() => fitNow());
     ro.observe(container);
+
+    // xterm.js has no native touch scrolling (xtermjs/xterm.js#1007). Translate
+    // single-finger drags into term.scrollLines. Capture-phase + non-passive so
+    // we win over xterm's internal pointer/textarea handling and can preventDefault.
+    let touchStartY = 0;
+    let touchLastY = 0;
+    let touchScrolling = false;
+    let touchPxPerLine = 8;
+    let touchVelocity = 0;
+    let touchLastT = 0;
+    let momentumRaf = 0;
+
+    const cancelMomentum = () => {
+      if (momentumRaf) {
+        cancelAnimationFrame(momentumRaf);
+        momentumRaf = 0;
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      cancelMomentum();
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0]!;
+      touchStartY = t.clientY;
+      touchLastY = t.clientY;
+      touchLastT = e.timeStamp;
+      touchVelocity = 0;
+      touchScrolling = false;
+      // Sensitivity: roughly half a row per pixel of finger travel feels close
+      // to native iOS momentum. Computed live so it stays sane across zooms.
+      const rowH = Math.max(8, container.clientHeight / Math.max(term.rows, 1));
+      touchPxPerLine = Math.max(4, rowH * 0.5);
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const y = e.touches[0]!.clientY;
+      if (!touchScrolling) {
+        if (Math.abs(y - touchStartY) < 4) return;
+        touchScrolling = true;
+      }
+      const dy = y - touchLastY;
+      const dt = Math.max(1, e.timeStamp - touchLastT);
+      touchVelocity = dy / dt; // px per ms; negative = swiping up
+      const lines = Math.round(-dy / touchPxPerLine);
+      if (lines !== 0) {
+        term.scrollLines(lines);
+        touchLastY = touchLastY - lines * touchPxPerLine;
+      }
+      touchLastT = e.timeStamp;
+      if (e.cancelable) e.preventDefault();
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!touchScrolling) return;
+      touchScrolling = false;
+      // Momentum: decay velocity each frame, scroll proportionally.
+      let v = touchVelocity;
+      if (Math.abs(v) < 0.05) return;
+      let leftover = 0;
+      const step = () => {
+        v *= 0.94;
+        if (Math.abs(v) < 0.02) {
+          momentumRaf = 0;
+          return;
+        }
+        // 16ms per frame approx; pixels of inertia per frame:
+        const dy = v * 16;
+        leftover += -dy / touchPxPerLine;
+        const lines = Math.trunc(leftover);
+        if (lines !== 0) {
+          term.scrollLines(lines);
+          leftover -= lines;
+        }
+        momentumRaf = requestAnimationFrame(step);
+      };
+      momentumRaf = requestAnimationFrame(step);
+      if (e.cancelable) e.preventDefault();
+    };
+
+    container.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
+    container.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+    container.addEventListener("touchend", onTouchEnd, { passive: false, capture: true });
+    container.addEventListener("touchcancel", cancelMomentum, { passive: true, capture: true });
     // Double rAF ensures fit runs after layout is painted; timeout covers
     // mobile browsers that settle dvh/safe-area after the first frame.
     requestAnimationFrame(() => requestAnimationFrame(fitNow));
@@ -89,6 +173,11 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
     return () => {
       clearTimeout(fitTimer);
       ro.disconnect();
+      cancelMomentum();
+      container.removeEventListener("touchstart", onTouchStart, { capture: true });
+      container.removeEventListener("touchmove", onTouchMove, { capture: true });
+      container.removeEventListener("touchend", onTouchEnd, { capture: true });
+      container.removeEventListener("touchcancel", cancelMomentum, { capture: true });
       dataDispose.dispose();
       term.dispose();
       termRef.current = null;

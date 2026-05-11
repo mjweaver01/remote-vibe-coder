@@ -107,11 +107,17 @@ export function SessionTerminal() {
       <div
         className="term-host-wrapper"
         onPointerDown={(e) => {
-          // Route mobile/touch input to the trap so the OS keyboard's dictation
-          // commits land in a real <input> (xterm's textarea drops them).
-          if (e.pointerType === "touch") {
-            queueMicrotask(() => kbdTrapRef.current?.focus());
-          }
+          if (e.pointerType !== "touch") return;
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const up = (ev: PointerEvent) => {
+            window.removeEventListener("pointerup", up);
+            window.removeEventListener("pointercancel", up);
+            const moved = Math.hypot(ev.clientX - startX, ev.clientY - startY);
+            if (moved < 8) kbdTrapRef.current?.focus();
+          };
+          window.addEventListener("pointerup", up, { once: true });
+          window.addEventListener("pointercancel", up, { once: true });
         }}
       >
         <XTerm ref={termRef} onData={handleData} onResize={handleResize} />
