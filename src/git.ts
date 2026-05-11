@@ -59,12 +59,20 @@ export async function gitStatus(cwd: string, sandboxRoot: string): Promise<GitSt
     execFileP("git", ["status", "--porcelain=v1", "-z"], { cwd: root, maxBuffer: 4 * 1024 * 1024 }),
   ]);
 
+  const { staged, unstaged, untracked } = parsePorcelainZ(statusOut.stdout, root);
+  return { inGit: true, root, branch, staged, unstaged, untracked };
+}
+
+// Porcelain v1 with -z: entries are NUL-separated, each entry is "XY path"
+// (or "XY new\0orig" for renames/copies).
+export function parsePorcelainZ(
+  raw: string,
+  root: string
+): { staged: GitFileStatus[]; unstaged: GitFileStatus[]; untracked: GitFileStatus[] } {
   const staged: GitFileStatus[] = [];
   const unstaged: GitFileStatus[] = [];
   const untracked: GitFileStatus[] = [];
 
-  // Porcelain v1 with -z: entries are NUL-separated, each entry is "XY path" (or "XY orig\0new" for renames)
-  const raw = statusOut.stdout;
   let i = 0;
   while (i < raw.length) {
     if (raw.length - i < 3) break;
@@ -75,7 +83,6 @@ export async function gitStatus(cwd: string, sandboxRoot: string): Promise<GitSt
     const relPath = end === -1 ? raw.slice(i) : raw.slice(i, end);
     i = end === -1 ? raw.length : end + 1;
 
-    // For renames, there's an additional NUL-terminated original path — skip it
     if (X === "R" || X === "C") {
       const end2 = raw.indexOf("\0", i);
       i = end2 === -1 ? raw.length : end2 + 1;
@@ -92,7 +99,7 @@ export async function gitStatus(cwd: string, sandboxRoot: string): Promise<GitSt
     }
   }
 
-  return { inGit: true, root, branch, staged, unstaged, untracked };
+  return { staged, unstaged, untracked };
 }
 
 export async function gitStage(files: string[], sandboxRoot: string): Promise<void> {

@@ -18,8 +18,8 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "types": ["node", "vite/client"]
+    "types": ["node", "vite/client", "vitest/globals"]
   },
-  "include": ["src/**/*", "web/src/**/*", "web/index.html"],
+  "include": ["src/**/*", "web/src/**/*", "web/index.html", "web/test-setup.ts", "vitest.config.ts"],
   "exclude": ["node_modules", "dist", "web/_legacy"]
 }

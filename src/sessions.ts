@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { basename } from "node:path";
 import type { CreateMode, ServerMessage, SessionInfo } from "./types.ts";
 
-const RING_BUFFER_BYTES = 64 * 1024;
+export const RING_BUFFER_BYTES = 64 * 1024;
 
 export interface ViewerSink {
   send(msg: ServerMessage): void;
@@ -208,7 +208,7 @@ function labelFor(cwd: string): string {
   return basename(cwd) || cwd;
 }
 
-function appendRing(buf: string, chunk: string): string {
+export function appendRing(buf: string, chunk: string): string {
   const next = buf + chunk;
   const bytes = Buffer.byteLength(next, "utf8");
   if (bytes <= RING_BUFFER_BYTES) return next;
