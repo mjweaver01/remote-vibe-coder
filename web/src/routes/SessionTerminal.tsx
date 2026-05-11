@@ -9,11 +9,12 @@ import type { SessionInfo, ServerMessage } from "../../../src/types.ts";
 
 interface OutletCtx {
   session: SessionInfo;
+  onKill: () => void;
 }
 
 export function SessionTerminal() {
   const { sessionId = "" } = useParams<{ sessionId: string }>();
-  const { session } = useOutletContext<OutletCtx>();
+  const { session, onKill } = useOutletContext<OutletCtx>();
   const ws = useWs();
   const toast = useToast();
 
@@ -123,6 +124,7 @@ export function SessionTerminal() {
       </div>
       <Keybar
         onSend={sendKey}
+        onKill={onKill}
         voiceSlot={<VoiceButton onText={sendVoiceText} />}
       />
       <input

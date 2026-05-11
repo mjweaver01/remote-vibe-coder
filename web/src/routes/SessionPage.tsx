@@ -94,7 +94,7 @@ export function SessionPage() {
           }
         />
       ) : (
-        <Outlet context={{ session }} />
+        <Outlet context={{ session, onKill: handleKill }} />
       )}
     </main>
   );

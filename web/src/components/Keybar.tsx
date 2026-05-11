@@ -5,10 +5,11 @@ export type KeySend = (data: string) => void;
 
 interface Props {
   onSend: KeySend;
+  onKill?: () => void;
   voiceSlot?: ReactNode;
 }
 
-export function Keybar({ onSend, voiceSlot }: Props) {
+export function Keybar({ onSend, onKill, voiceSlot }: Props) {
   return (
     <div className="keybar keybar-mobile" role="toolbar" aria-label="Terminal keys">
       {/* Left — answer diamond: 1 top · 2 left · 3 right · mic bottom */}
@@ -65,9 +66,10 @@ export function Keybar({ onSend, voiceSlot }: Props) {
         <div className="gb-dpad-hub" aria-hidden="true" />
         <button
           className="gb-dpad-btn gb-dpad-kill"
-          onClick={() => onSend("\x03")}
-          title="Ctrl+C"
-          aria-label="Ctrl+C"
+          onClick={onKill}
+          disabled={!onKill}
+          title="Kill session"
+          aria-label="Kill session"
         >
           <Skull size={14} aria-hidden="true" />
         </button>
