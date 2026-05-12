@@ -66,7 +66,7 @@ export function BrowserPage() {
   return (
     <main className="page page-browser">
       <Topbar
-        leading={<AudioWaveform size={20} color="var(--accent)" aria-hidden="true" />}
+        leading={<AudioWaveform size={28} color="var(--accent)" aria-hidden="true" />}
         title="remote-vibe-coder"
         subtitle={data ? data.cwdLabel : (path ?? "")}
         trailing={
@@ -97,7 +97,6 @@ export function BrowserPage() {
         {data ? (
           <>
             <ActiveSessionsList sessions={sessions} activeIds={activeSessionIds} showCwd />
-
 
             {favorites.length > 0 ? (
               <section className="rows">
@@ -193,7 +192,11 @@ export function BrowserPage() {
                   const starred = isFavorite(e.path);
                   return (
                     <div key={e.path} className="row row-folder">
-                      <button type="button" className="row-press" onClick={() => navigateTo(e.path)}>
+                      <button
+                        type="button"
+                        className="row-press"
+                        onClick={() => navigateTo(e.path)}
+                      >
                         <Folder size={18} className="row-icon" aria-hidden="true" />
                         <div className="row-body">
                           <div className="row-name">{e.name}</div>

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { createApiRoutes } from "./api.ts";
@@ -59,21 +59,56 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       push,
     })
   );
+  // Serve the PWA manifest dynamically so the token (if present on the request)
+  // gets baked into start_url. iOS Safari installs a PWA into a separate WebKit
+  // storage partition — without the token in start_url, the launched app can't
+  // authenticate to /api/* or /ws.
+  app.get("/manifest.webmanifest", async (c) => {
+    const token = c.req.query("token");
+    const startUrl = token ? `/?token=${encodeURIComponent(token)}` : "/";
+    const manifest = {
+      name: "Remote Vibe Coder",
+      short_name: "Vibe Coder",
+      description: "Run Claude Code remotely from any device.",
+      start_url: startUrl,
+      scope: "/",
+      display: "standalone",
+      orientation: "any",
+      background_color: "#0a0a0a",
+      theme_color: "#0a0a0a",
+      icons: [
+        { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+        { src: "/icon-maskable.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },
+      ],
+    };
+    return c.json(manifest, 200, {
+      "content-type": "application/manifest+json",
+      "cache-control": "no-cache",
+    });
+  });
+
+  // Serve index.html ourselves so we can inject the token into the manifest
+  // link href. iOS Safari pre-fetches the manifest when it parses the link tag,
+  // so client-side rewriting is too late — it has to be in the HTML the server
+  // returns.
+  app.get("/", async (c) => {
+    return serveIndexWithToken(c, opts.staticDir);
+  });
+  app.get("/index.html", async (c) => {
+    return serveIndexWithToken(c, opts.staticDir);
+  });
+
   app.use(
     "/*",
     serveStatic({
       root: relative(process.cwd(), opts.staticDir) || ".",
-      rewriteRequestPath: (path) => (path === "/" ? "/index.html" : path),
     })
   );
   app.notFound(async (c) => {
     // SPA fallback for client-side routes that don't match a real file.
-    try {
-      const indexHtml = await readFile(join(opts.staticDir, "index.html"));
-      return c.html(indexHtml.toString(), 200, { "cache-control": "no-cache" });
-    } catch {
-      return c.text("not found", 404);
-    }
+    return serveIndexWithToken(c, opts.staticDir);
   });
 
   const server = serve({ fetch: app.fetch, port: opts.port, hostname: opts.host });
@@ -90,6 +125,23 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       await new Promise<void>((r) => server.close(() => r()));
     },
   };
+}
+
+async function serveIndexWithToken(c: Context, staticDir: string): Promise<Response> {
+  try {
+    let html = (await readFile(join(staticDir, "index.html"))).toString();
+    const token = c.req.query("token");
+    if (token) {
+      const encoded = encodeURIComponent(token);
+      html = html.replace(
+        /<link\s+rel="manifest"\s+href="\/manifest\.webmanifest"\s*\/>/,
+        `<link rel="manifest" href="/manifest.webmanifest?token=${encoded}" />`
+      );
+    }
+    return c.html(html, 200, { "cache-control": "no-cache" });
+  } catch {
+    return c.text("not found", 404);
+  }
 }
 
 function buildUrl(host: string, port: number, token: string | null): string {
