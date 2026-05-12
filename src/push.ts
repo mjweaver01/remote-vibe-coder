@@ -37,7 +37,7 @@ export class PushService {
   private subject: string;
   private loaded = false;
 
-  constructor(subject = "mailto:rvc@localhost") {
+  constructor(subject = "mailto:remote-vibe-coder@example.com") {
     this.subject = subject;
   }
 

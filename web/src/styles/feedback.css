@@ -27,9 +27,11 @@
   gap: 10px;
   padding: 10px 12px;
   border-radius: var(--radius-md);
-  background: var(--bg-1);
+  background: color-mix(in srgb, var(--bg-1) 55%, transparent);
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-md);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   font-size: 13px;
   pointer-events: auto;
   max-width: 480px;

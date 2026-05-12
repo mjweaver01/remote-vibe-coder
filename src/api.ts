@@ -186,6 +186,18 @@ export function createApiRoutes(ctx: ApiContext): Hono {
     }
   });
 
+  // Diagnostic: trigger a synthetic push to all current subscribers.
+  app.post("/push/test", async (c) => {
+    if (!ctx.push) return c.json({ error: "push not available" }, 503);
+    await ctx.push.send({
+      title: "Test push",
+      body: `Sent ${new Date().toLocaleTimeString()}`,
+      tag: "rvc-test",
+      url: "/",
+    });
+    return c.json({ ok: true });
+  });
+
   app.all("*", (c) => c.json({ error: "not found" }, 404));
 
   return app;

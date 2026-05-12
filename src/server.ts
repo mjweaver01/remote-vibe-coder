@@ -49,6 +49,20 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           tag: `rvc-prompt-${sessionId}`,
         });
       },
+      onExternalUpdate: ({ sessionId, cwdLabel, title }) => {
+        if (process.env.RVC_DEBUG)
+          console.log(
+            `[push] onExternalUpdate id=${sessionId} subscribers=${push.hasSubscribers() ? "yes" : "no"}`
+          );
+        if (!push.hasSubscribers()) return;
+        void push.send({
+          title: title ? `${cwdLabel}: ${title}` : `${cwdLabel} — conversation updated`,
+          body: "Updated by another Claude session.",
+          url: `/s/${sessionId}`,
+          sessionId,
+          tag: `rvc-external-${sessionId}`,
+        });
+      },
     },
   });
 

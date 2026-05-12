@@ -8,12 +8,13 @@ import type { CreateMode, ServerMessage, SessionInfo } from "./types.ts";
 
 export { waitForFileSizeStable, type WaitForFileSizeStableOptions } from "./convLog.ts";
 
-/** Optional sink for "Claude appears to be waiting for input" events. */
+/** Optional sink for push-worthy session events. */
 export interface PromptNotifier {
   onPrompt(info: { sessionId: string; cwdLabel: string; title?: string; preview: string }): void;
+  onExternalUpdate?(info: { sessionId: string; cwdLabel: string; title?: string }): void;
 }
 
-const PROMPT_IDLE_MS = 1500;
+const PROMPT_IDLE_MS = 3000;
 const PROMPT_TAIL_BYTES = 4096;
 
 export const RING_BUFFER_BYTES = 64 * 1024;
@@ -42,6 +43,12 @@ interface Session {
   ended: boolean;
   promptIdleTimer: ReturnType<typeof setTimeout> | null;
   hasUnseenUpdate: boolean;
+  /** Set to true when the local PTY emits substantive output (Claude is
+   *  responding or rendering a permission prompt). Cleared after the idle
+   *  prompt is detected and a push fires. Ensures we only notify on the
+   *  edge from "responding" to "idle," not every time we observe the empty
+   *  input box. */
+  sawSubstantiveOutput: boolean;
 }
 
 export class SessionManager {
@@ -82,6 +89,14 @@ export class SessionManager {
         if (!s.hasUnseenUpdate) {
           s.hasUnseenUpdate = true;
           this.broadcastSessions();
+        }
+        if (this.notifier?.onExternalUpdate) {
+          const conv = this.convWatcher.getState(id);
+          this.notifier.onExternalUpdate({
+            sessionId: id,
+            cwdLabel: s.cwdLabel,
+            title: conv?.title,
+          });
         }
       } else {
         // local growth: our PTY produced it; attached viewers already see it.
@@ -138,6 +153,11 @@ export class SessionManager {
         }
       }
       if (!result.matched) return;
+      // Only fire on the edge from "responding" → "idle." If we haven't seen
+      // substantive output since the last notification (or since session
+      // start), the user is just looking at the empty input box.
+      if (!s.sawSubstantiveOutput) return;
+      s.sawSubstantiveOutput = false;
       const conv = this.convWatcher.getState(s.id);
       this.notifier?.onPrompt({
         sessionId: s.id,
@@ -253,6 +273,7 @@ export class SessionManager {
       ended: false,
       promptIdleTimer: null,
       hasUnseenUpdate: false,
+      sawSubstantiveOutput: false,
     };
 
     this.convWatcher.track(id, cwd, { knownConvId, preexistingFiles });
@@ -263,6 +284,10 @@ export class SessionManager {
       session.ringBuffer = appendRing(session.ringBuffer, data);
       const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers.keys()) v.send(msg);
+      // Substantive (non-cosmetic) output = Claude is producing a response or
+      // a permission prompt. Arm the notify-on-next-idle flag.
+      const stripped = data.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "").trim();
+      if (stripped.length >= 80) session.sawSubstantiveOutput = true;
       this.scheduleIdlePromptCheck(session);
       this.convWatcher.notePtyOutput(id, data);
     });
