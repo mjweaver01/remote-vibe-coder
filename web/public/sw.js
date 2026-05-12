@@ -9,6 +9,10 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(self.clients.claim());
 });
 
+// Minimal fetch handler — required for Chrome to treat the app as installable.
+// We don't cache anything: the app is LAN-first and needs a live server + WS.
+self.addEventListener("fetch", () => {});
+
 self.addEventListener("push", (event) => {
   let payload = { title: "Claude is waiting", body: "Tap to open the session." };
   try {

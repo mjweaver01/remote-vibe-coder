@@ -8,6 +8,12 @@ import { applyStoredThemeEarly } from "./hooks/useTheme.ts";
 
 applyStoredThemeEarly();
 
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 const container = document.getElementById("app");
 if (!container) throw new Error("#app element missing from index.html");
 
