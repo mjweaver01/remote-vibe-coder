@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Remote Vibe Coder — Claude Code from anywhere</title>
+    <meta
+      name="description"
+      content="A tiny local web server that wraps the real Claude CLI in a PTY and serves it to any browser on your network. Start on your laptop, finish on your phone."
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+
+    <meta property="og:title" content="Remote Vibe Coder" />
+    <meta property="og:description" content="Orchestrate Claude Code from anywhere. Start on your laptop, finish on your phone." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="favicon.svg" />
+    <meta name="twitter:card" content="summary" />
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/">
+        <img src="favicon.svg" alt="" width="28" height="28" />
+        <span>remote-vibe-coder</span>
+      </a>
+      <nav class="nav">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/mjweaver01/remote-vibe-coder" target="_blank" rel="noopener">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>
+          Claude Code,
+          <span class="accent">from anywhere.</span>
+        </h1>
+        <p class="lede">
+          A tiny local web server that wraps the real <code>claude</code> CLI in a PTY and renders
+          it in your browser. Start a session on your laptop, walk away, and answer permission
+          prompts from your phone.
+        </p>
+
+        <div class="cta">
+          <button class="install" data-copy="npx rvc --root ~/Websites" title="Click to copy">
+            <span class="prompt">$</span>
+            <span class="cmd">npx rvc --root ~/Websites</span>
+            <span class="copy-hint" aria-hidden="true">copy</span>
+          </button>
+          <a class="btn ghost" href="https://github.com/mjweaver01/remote-vibe-coder" target="_blank" rel="noopener">
+            View on GitHub
+          </a>
+        </div>
+
+        <p class="micro">Requires Node 25+ and the <code>claude</code> CLI on your PATH.</p>
+      </section>
+
+      <section class="frame">
+        <div class="frame-bar">
+          <span class="dot dot-r"></span>
+          <span class="dot dot-y"></span>
+          <span class="dot dot-g"></span>
+          <span class="frame-title">~/Websites · claude</span>
+        </div>
+        <pre class="frame-body"><span class="muted">$ npx rvc --root ~/Websites</span>
+
+  <span class="accent">remote-vibe-coder</span> <span class="muted">v0.4.0</span>
+
+  Local:   <span class="link">http://127.0.0.1:4310</span>
+  LAN:     <span class="link">http://192.168.1.42:4310?token=•••</span>
+
+  <span class="muted">Scan from your phone:</span>
+  ▄▄▄▄▄▄▄ ▄ ▄▄▄▄  ▄▄▄▄▄▄▄
+  █ ▄▄▄ █ ▀█▄▀▄▀▀ █ ▄▄▄ █
+  █ ███ █ ▄▀ ██▄  █ ███ █
+  █▄▄▄▄▄█ █▄█ █▄█ █▄▄▄▄▄█
+   ▄ ▄▄▀▄▄█▀▄▀▀▄▄▄ ▄ ▄ ▄
+  ▀ ▀  ▀▀▄▀ █▀▄▀ ▄▀█▀█▀ █
+  █▄▄▄▄▄█ ▀▄█▀▀▀▄ ▄▀▀ ▄▄
+
+  <span class="muted">Ready. Press Ctrl+C to stop.</span>
+</pre>
+      </section>
+
+      <section id="features" class="features">
+        <h2>What you get</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Real PTY terminal</h3>
+            <p>
+              The actual <code>claude</code> CLI — slash commands, autocomplete, permission prompts,
+              cancellation. No fake reimplementation.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Cross-device handoff</h3>
+            <p>
+              Sessions live on the server, not the browser. Open the same URL from any device on
+              your LAN and pick up exactly where you left off.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Mobile-first keybar</h3>
+            <p>
+              Gameboy-style controls for permission prompts: 1/2/3, arrows, Esc, Tab, Ctrl+C —
+              everything you need without a keyboard.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Files panel</h3>
+            <p>
+              Monaco-powered viewer with git diff vs HEAD. Stage, unstage, and commit from the
+              browser without leaving the page.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Conversation history</h3>
+            <p>
+              Resume any past Claude session from <code>~/.claude/projects/</code>, or
+              <code>--continue</code> the last conversation in a folder.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Voice input</h3>
+            <p>
+              Native Web Speech API mic button on the keybar. No model downloads, no external
+              services.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="install" class="install-section">
+        <h2>Install</h2>
+
+        <h3>Local network</h3>
+        <pre class="block" data-copy><code>npx rvc --root ~/Websites</code></pre>
+        <p class="micro">Binds to <code>127.0.0.1</code>. Add <code>--host 0.0.0.0</code> to reach it from your phone on the same Wi-Fi.</p>
+
+        <h3>Over the internet (ngrok HTTPS tunnel)</h3>
+        <pre class="block" data-copy><code>npx rvc --root ~/Websites --ngrok</code></pre>
+        <p class="micro">
+          Needs an authtoken from
+          <a href="https://dashboard.ngrok.com" target="_blank" rel="noopener">ngrok</a>. The URL
+          carries a one-shot token stored in <code>sessionStorage</code>.
+        </p>
+
+        <h3>From source</h3>
+        <pre class="block" data-copy><code>git clone git@github.com:mjweaver01/remote-vibe-coder.git
+cd remote-vibe-coder
+npm install
+npm run build
+node dist/cli.js --root ~/Websites</code></pre>
+      </section>
+
+      <section class="trust">
+        <h2>Trust model</h2>
+        <p>
+          The token is shown only on the TTY where the server starts. Anyone with it can run
+          <code>claude</code> as you — treat it like an SSH key. For WAN access, use
+          <code>--ngrok</code>, Tailscale, or an SSH tunnel.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <div class="foot-row">
+        <span>MIT · made by <a href="https://github.com/mjweaver01" target="_blank" rel="noopener">@mjweaver01</a></span>
+        <span>
+          <a href="https://github.com/mjweaver01/remote-vibe-coder" target="_blank" rel="noopener">GitHub</a>
+          ·
+          <a href="https://www.npmjs.com/package/remote-vibe-coder" target="_blank" rel="noopener">npm</a>
+        </span>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite">copied</div>
+
+    <script>
+      const toast = document.getElementById("toast");
+      function flash() {
+        toast.classList.add("show");
+        clearTimeout(flash._t);
+        flash._t = setTimeout(() => toast.classList.remove("show"), 1200);
+      }
+      function copyText(text) {
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(text).then(flash);
+      }
+      document.querySelectorAll("[data-copy]").forEach((el) => {
+        el.addEventListener("click", () => {
+          const t = el.getAttribute("data-copy") || el.innerText.trim();
+          copyText(t);
+        });
+      });
+    </script>
+  </body>
+</html>

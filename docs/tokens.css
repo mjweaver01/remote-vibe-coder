@@ -1,0 +1,246 @@
+/* ============================================================================
+   Design tokens — the single source of truth for color, type, spacing, motion.
+   Add new values here before referencing them anywhere else.
+   ========================================================================= */
+
+:root {
+  /* ─── Surfaces ─────────────────────────────────────────── */
+  --bg: #0a0a0a;
+  --bg-1: #131316;
+  --bg-2: #16161a;
+  --bg-3: #1d1d23;
+  --bg-black: #000;
+
+  /* ─── Borders ──────────────────────────────────────────── */
+  --border: #26262d;
+  --border-strong: #353541;
+
+  /* ─── Text ─────────────────────────────────────────────── */
+  --text: #e9e9ec;
+  --text-dim: #8a8a93;
+
+  /* ─── Brand / accent (orange) ──────────────────────────── */
+  --accent: #ff8a4c;
+  --accent-strong: #ff7a32;
+  --accent-soft: rgba(255, 138, 76, 0.14);
+  --accent-soft-hi: rgba(255, 138, 76, 0.22);
+  --accent-ring: rgba(255, 138, 76, 0.3);
+  --accent-ring-strong: rgba(255, 138, 76, 0.4);
+  --accent-glow: rgba(255, 138, 76, 0.8);
+  --on-accent: #1a1208;
+
+  /* ─── Semantic ─────────────────────────────────────────── */
+  --success: #6dd17a;
+  --success-soft: rgba(76, 175, 80, 0.12);
+  --success-ring: rgba(109, 209, 122, 0.4);
+  --success-glow: rgba(109, 209, 122, 0.55);
+  --on-success: #07210b;
+
+  --danger: #ff5d6c;
+  --danger-soft: rgba(255, 93, 108, 0.12);
+  --danger-ring: rgba(255, 93, 108, 0.4);
+  --danger-glow: rgba(255, 93, 108, 0.6);
+  --on-danger: #160506;
+
+  --warning: #f5c34a;
+
+  /* ─── Editor (VSCode-style files & git pane) ───────────── */
+  --editor-bg: #1e1e1e;
+  --editor-bg-alt: #252526;
+  --editor-bg-tab: #2d2d2d;
+  --editor-border: #2a2a2a;
+  --editor-border-strong: #3c3c3c;
+  --editor-hover: #2a2a2a;
+  --editor-selected: #094771;
+  --editor-selected-dim: #aac7e8;
+  --editor-text: #cccccc;
+  --editor-text-bright: #ffffff;
+  --editor-text-dim: #888888;
+  --editor-text-faint: #666666;
+  --editor-text-soft: #9d9d9d;
+  --editor-text-mute: #aaaaaa;
+  --editor-close: #6a6a6a;
+  --editor-close-bg-hover: #4a4a4a;
+
+  /* ─── Git status palette ───────────────────────────────── */
+  --git-modified: #e2c08d;
+  --git-added: #73c991;
+  --git-deleted: #f14c4c;
+  --git-untracked: var(--editor-text-dim);
+
+  /* ─── Gameboy hub (keybar) ─────────────────────────────── */
+  --hub-bg: #0d0d10;
+  --hub-border: #1a1a20;
+  --hub-pad: #1c1c22;
+
+  /* ─── Scrim & overlays ─────────────────────────────────── */
+  --scrim: rgba(0, 0, 0, 0.4);
+  --scrim-strong: rgba(0, 0, 0, 0.6);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --hover-tint: rgba(255, 255, 255, 0.06);
+  --keybar-bg: rgba(10, 10, 10, 0.95);
+  --replay-banner-bg: rgba(20, 14, 8, 0.85);
+
+  /* ─── Geometry ─────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+
+  /* ─── Shadow ───────────────────────────────────────────── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-banner: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-tray: 4px 0 20px rgba(0, 0, 0, 0.5);
+  --shadow-send: 0 2px 6px rgba(255, 138, 76, 0.35);
+  --shadow-send-pressed: 0 1px 3px rgba(255, 138, 76, 0.3);
+
+  /* ─── Type ─────────────────────────────────────────────── */
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
+    "Segoe UI", system-ui, sans-serif;
+
+  /* ─── Motion ───────────────────────────────────────────── */
+  --t-fast: 80ms;
+  --t-base: 120ms;
+  --t-slow: 180ms;
+
+  /* ─── Safe area insets ─────────────────────────────────── */
+  --safe-top: env(safe-area-inset-top, 0);
+  --safe-bottom: env(safe-area-inset-bottom, 0);
+  --safe-left: env(safe-area-inset-left, 0);
+  --safe-right: env(safe-area-inset-right, 0);
+
+  /* ─── Z-index scale ────────────────────────────────────── */
+  --z-banner: 3;
+  --z-tray: 4;
+  --z-topbar: 5;
+  --z-toast: 100;
+  --z-modal: 100;
+
+  /* ─── Layout widths ────────────────────────────────────── */
+  --page-max-width: 760px;
+  --tree-width: 240px;
+  --tree-width-mobile: 80%;
+  --tree-width-mobile-max: 320px;
+}
+
+/* Light mode — flips chrome surfaces and text only. The Monaco editor,
+   xterm terminal, and gameboy keybar stay dark on purpose: switching
+   them to light would clash with the dark themes those subsystems ship
+   with and hurt readability of code/terminal output. */
+:root[data-theme="light"] {
+  --bg: #f7f7f8;
+  --bg-1: #ffffff;
+  --bg-2: #f1f1f3;
+  --bg-3: #e7e7eb;
+
+  --border: #d8d8de;
+  --border-strong: #b8b8c2;
+
+  --text: #1a1a1f;
+  --text-dim: #5c5c66;
+
+  --accent-soft: rgba(255, 122, 50, 0.12);
+  --accent-soft-hi: rgba(255, 122, 50, 0.2);
+  --on-accent: #1a1208;
+
+  --success-soft: rgba(54, 156, 70, 0.14);
+  --danger-soft: rgba(220, 60, 75, 0.12);
+
+  --scrim: rgba(0, 0, 0, 0.25);
+  --scrim-strong: rgba(0, 0, 0, 0.45);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.32);
+  --hover-tint: rgba(0, 0, 0, 0.05);
+  --keybar-bg: rgba(247, 247, 248, 0.95);
+  --replay-banner-bg: rgba(255, 240, 220, 0.92);
+
+  --bg-black: #ffffff;
+  --hub-bg: #e4e4e8;
+  --hub-border: #cfcfd6;
+  --hub-pad: #ececf0;
+
+  --editor-bg: #ffffff;
+  --editor-bg-alt: #f3f3f3;
+  --editor-bg-tab: #ececec;
+  --editor-border: #e7e7e7;
+  --editor-border-strong: #cecece;
+  --editor-hover: #e8e8e8;
+  --editor-selected: #d6ebff;
+  --editor-selected-dim: #0a64b4;
+  --editor-text: #1f1f1f;
+  --editor-text-bright: #000000;
+  --editor-text-dim: #777777;
+  --editor-text-faint: #999999;
+  --editor-text-soft: #424242;
+  --editor-text-mute: #6e6e6e;
+  --editor-close: #6a6a6a;
+  --editor-close-bg-hover: #d4d4d4;
+
+  --git-untracked: #6e6e6e;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --shadow-banner: 0 4px 14px rgba(0, 0, 0, 0.1);
+  --shadow-tray: 4px 0 20px rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f7f7f8;
+    --bg-1: #ffffff;
+    --bg-2: #f1f1f3;
+    --bg-3: #e7e7eb;
+
+    --border: #d8d8de;
+    --border-strong: #b8b8c2;
+
+    --text: #1a1a1f;
+    --text-dim: #5c5c66;
+
+    --accent-soft: rgba(255, 122, 50, 0.12);
+    --accent-soft-hi: rgba(255, 122, 50, 0.2);
+
+    --success-soft: rgba(54, 156, 70, 0.14);
+    --danger-soft: rgba(220, 60, 75, 0.12);
+
+    --scrim: rgba(0, 0, 0, 0.25);
+    --scrim-strong: rgba(0, 0, 0, 0.45);
+    --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+    --scrollbar-thumb-hover: rgba(0, 0, 0, 0.32);
+    --hover-tint: rgba(0, 0, 0, 0.05);
+    --keybar-bg: rgba(247, 247, 248, 0.95);
+    --replay-banner-bg: rgba(255, 240, 220, 0.92);
+
+    --bg-black: #ffffff;
+    --hub-bg: #e4e4e8;
+    --hub-border: #cfcfd6;
+    --hub-pad: #ececf0;
+
+    --editor-bg: #ffffff;
+    --editor-bg-alt: #f3f3f3;
+    --editor-bg-tab: #ececec;
+    --editor-border: #e7e7e7;
+    --editor-border-strong: #cecece;
+    --editor-hover: #e8e8e8;
+    --editor-selected: #d6ebff;
+    --editor-selected-dim: #0a64b4;
+    --editor-text: #1f1f1f;
+    --editor-text-bright: #000000;
+    --editor-text-dim: #777777;
+    --editor-text-faint: #999999;
+    --editor-text-soft: #424242;
+    --editor-text-mute: #6e6e6e;
+    --editor-close: #6a6a6a;
+    --editor-close-bg-hover: #d4d4d4;
+
+    --git-untracked: #6e6e6e;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --shadow-banner: 0 4px 14px rgba(0, 0, 0, 0.1);
+    --shadow-tray: 4px 0 20px rgba(0, 0, 0, 0.12);
+  }
+}
