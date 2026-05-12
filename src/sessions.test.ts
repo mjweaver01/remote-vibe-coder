@@ -4,6 +4,7 @@ import {
   minViewerDims,
   RING_BUFFER_BYTES,
   SessionManager,
+  waitForFileSizeStable,
   type ViewerSink,
 } from "./sessions.ts";
 import type { ServerMessage, SessionInfo } from "./types.ts";
@@ -156,5 +157,87 @@ describe("SessionManager resize policy", () => {
       expect(after.cols).toBe(200); // laptop now smallest on cols
       expect(after.rows).toBe(50); // laptop still smallest on rows
     });
+  });
+});
+
+describe("waitForFileSizeStable", () => {
+  it("resolves immediately once size stays stable for the window", async () => {
+    let calls = 0;
+    const start = Date.now();
+    await waitForFileSizeStable(
+      async () => {
+        calls++;
+        return 42; // never changes
+      },
+      { pollMs: 20, stableMs: 100, maxMs: 1000 }
+    );
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeLessThan(400);
+    expect(elapsed).toBeGreaterThanOrEqual(90);
+    expect(calls).toBeGreaterThan(1);
+  });
+
+  it("keeps waiting while size still grows, then resolves after it settles", async () => {
+    let size = 0;
+    const start = Date.now();
+    // Grow for 200ms, then plateau.
+    const growTimer = setInterval(() => {
+      if (Date.now() - start < 200) size += 10;
+    }, 30);
+    try {
+      await waitForFileSizeStable(async () => size, {
+        pollMs: 30,
+        stableMs: 120,
+        maxMs: 2000,
+      });
+    } finally {
+      clearInterval(growTimer);
+    }
+    const elapsed = Date.now() - start;
+    // Must wait at least until growth stopped (200ms) plus the stable window.
+    expect(elapsed).toBeGreaterThanOrEqual(280);
+    expect(size).toBeGreaterThan(0);
+  });
+
+  it("respects maxMs even if size keeps changing forever", async () => {
+    let size = 0;
+    const start = Date.now();
+    await waitForFileSizeStable(
+      async () => {
+        size += 1;
+        return size;
+      },
+      { pollMs: 20, stableMs: 100, maxMs: 250 }
+    );
+    const elapsed = Date.now() - start;
+    expect(elapsed).toBeGreaterThanOrEqual(240);
+    expect(elapsed).toBeLessThan(600);
+  });
+});
+
+describe("SessionManager.reload", () => {
+  it("returns null for an unknown session id", async () => {
+    const mgr = new SessionManager({ command: "cat" });
+    try {
+      const out = await mgr.reload("does-not-exist", 80, 24);
+      expect(out).toBeNull();
+    } finally {
+      mgr.close();
+    }
+  });
+
+  it("returns null when the session has no conversation bound", async () => {
+    // A "new" session against a directory with no Claude project dir won't get
+    // a conversationId, so reload has nothing to --resume against.
+    const mgr = new SessionManager({ command: "cat" });
+    try {
+      const created = await mgr.create(process.cwd(), 80, 24);
+      const out = await mgr.reload(created.id, 80, 24);
+      expect(out).toBeNull();
+      mgr.kill(created.id);
+      await new Promise((r) => setTimeout(r, 20));
+    } finally {
+      mgr.close();
+    }
   });
 });

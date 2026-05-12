@@ -464,22 +464,7 @@ export class SessionManager {
    * Bounded by MAX_MS so a continuously-writing peer can't block forever.
    */
   private async waitForConvLogStable(cwd: string, conversationId: string): Promise<void> {
-    const POLL_MS = 100;
-    const STABLE_MS = 500;
-    const MAX_MS = 3000;
-    const start = Date.now();
-    let lastSize = await readConvLogSize(cwd, conversationId);
-    let stableSince = Date.now();
-    while (Date.now() - start < MAX_MS) {
-      await sleep(POLL_MS);
-      const size = await readConvLogSize(cwd, conversationId);
-      if (size === lastSize) {
-        if (Date.now() - stableSince >= STABLE_MS) return;
-      } else {
-        lastSize = size;
-        stableSince = Date.now();
-      }
-    }
+    await waitForFileSizeStable(() => readConvLogSize(cwd, conversationId));
   }
 
   kill(sessionId: string) {
@@ -522,6 +507,42 @@ export function minViewerDims(viewers: Iterable<ViewerDims>): ViewerDims | null 
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+export interface WaitForFileSizeStableOptions {
+  /** Required quiet window before declaring stable. */
+  stableMs?: number;
+  /** Sampling interval. */
+  pollMs?: number;
+  /** Hard ceiling; resolves regardless once exceeded. */
+  maxMs?: number;
+}
+
+/**
+ * Poll `read()` until the returned size hasn't changed for `stableMs`, or
+ * `maxMs` elapses. Exported so the stability heuristic can be tested without
+ * spinning up a PTY.
+ */
+export async function waitForFileSizeStable(
+  read: () => Promise<number>,
+  opts: WaitForFileSizeStableOptions = {}
+): Promise<void> {
+  const pollMs = opts.pollMs ?? 100;
+  const stableMs = opts.stableMs ?? 500;
+  const maxMs = opts.maxMs ?? 3000;
+  const start = Date.now();
+  let lastSize = await read();
+  let stableSince = Date.now();
+  while (Date.now() - start < maxMs) {
+    await sleep(pollMs);
+    const size = await read();
+    if (size === lastSize) {
+      if (Date.now() - stableSince >= stableMs) return;
+    } else {
+      lastSize = size;
+      stableSince = Date.now();
+    }
+  }
 }
 
 async function readConvLogSize(cwd: string, conversationId: string): Promise<number> {
