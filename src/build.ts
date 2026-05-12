@@ -30,7 +30,7 @@ async function buildServer() {
     bundle: true,
     sourcemap: true,
     logLevel: "warning",
-    external: ["node-pty", "qrcode", "qrcode-terminal", "selfsigned", "ws"],
+    external: ["node-pty", "qrcode", "qrcode-terminal", "ws", "@ngrok/ngrok"],
     banner: { js: "#!/usr/bin/env node" },
   });
   chmodSync(join(distDir, "cli.js"), 0o755);

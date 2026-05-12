@@ -1,13 +1,11 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
-import { existsSync, statSync } from "node:fs";
-import { networkInterfaces } from "node:os";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { homedir, networkInterfaces, platform } from "node:os";
 import qrcode from "qrcode-terminal";
 import { startServer } from "./server.ts";
 import { generateToken } from "./auth.ts";
-import { ensureSelfSignedCert, loadCertFromFiles } from "./certs.ts";
 import { expandHome } from "./files.ts";
-import type { TlsConfig } from "./server.ts";
 
 interface Flags {
   port: number;
@@ -17,9 +15,9 @@ interface Flags {
   command: string;
   idleTimeoutMs: number | null;
   domain: string | null;
-  https: boolean;
-  certPath: string | null;
-  keyPath: string | null;
+  ngrok: boolean;
+  ngrokAuthtoken: string | null;
+  ngrokDomain: string | null;
   help: boolean;
 }
 
@@ -32,9 +30,9 @@ function parseArgs(argv: string[]): Flags {
     command: "claude",
     idleTimeoutMs: null,
     domain: null,
-    https: false,
-    certPath: null,
-    keyPath: null,
+    ngrok: false,
+    ngrokAuthtoken: null,
+    ngrokDomain: null,
     help: false,
   };
   let tokenFlagSeen = false;
@@ -94,16 +92,16 @@ function parseArgs(argv: string[]): Flags {
       case "--domain":
         flags.domain = next(a);
         break;
-      case "--https":
-        flags.https = true;
+      case "--ngrok":
+        flags.ngrok = true;
         break;
-      case "--cert":
-        flags.certPath = resolve(expandHome(next(a)));
-        flags.https = true;
+      case "--ngrok-authtoken":
+        flags.ngrokAuthtoken = next(a);
+        flags.ngrok = true;
         break;
-      case "--key":
-        flags.keyPath = resolve(expandHome(next(a)));
-        flags.https = true;
+      case "--ngrok-domain":
+        flags.ngrokDomain = next(a);
+        flags.ngrok = true;
         break;
       case "--help":
       case "-h":
@@ -117,8 +115,7 @@ function parseArgs(argv: string[]): Flags {
     }
   }
 
-  // Auto-token when bound to a non-loopback host and the user didn't say otherwise
-  if (!tokenFlagSeen && flags.host !== "127.0.0.1" && flags.host !== "localhost") {
+  if (!tokenFlagSeen && (flags.ngrok || (flags.host !== "127.0.0.1" && flags.host !== "localhost"))) {
     flags.token = generateToken();
   }
 
@@ -131,17 +128,17 @@ function printHelp() {
 Usage: remote-vibe-coder [options]
 
 Options:
-  -p, --port <n>         Port to listen on (default: 4310)
-  -H, --host <addr>      Bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
-  -r, --root <path>      Folder you can browse (default: ~/Websites)
-  -t, --token <str>      Require ?token=… (auto-generated when --host is non-loopback)
-      --no-token         Skip token (insecure on LAN)
-  -c, --command <bin>    Command to run in each session (default: claude)
-      --idle-timeout <m> Kill sessions idle for more than <m> minutes
-      --https            Serve over TLS using an auto-generated self-signed cert
-      --cert <path>      Use a custom TLS cert (implies --https)
-      --key <path>       Use a custom TLS key  (implies --https)
-  -h, --help             Show this help
+  -p, --port <n>             Port to listen on (default: 4310)
+  -H, --host <addr>          Bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
+  -r, --root <path>          Folder you can browse (default: ~/Websites)
+  -t, --token <str>          Require ?token=… (auto-generated when --ngrok or non-loopback host)
+      --no-token             Skip token (insecure)
+  -c, --command <bin>        Command to run in each session (default: claude)
+      --idle-timeout <m>     Kill sessions idle for more than <m> minutes
+      --ngrok                Expose via ngrok tunnel (HTTPS). Auth via NGROK_AUTHTOKEN env or flag.
+      --ngrok-authtoken <t>  ngrok authtoken (overrides NGROK_AUTHTOKEN env). Implies --ngrok.
+      --ngrok-domain <d>     Reserved ngrok domain (e.g. foo.ngrok-free.app). Implies --ngrok.
+  -h, --help                 Show this help
 `);
 }
 
@@ -159,11 +156,10 @@ function lanAddresses(): string[] {
 
 function locateStaticDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  // Prefer bundled output — it has the compiled app.js and xterm.css
   const candidates = [
-    resolve(here, "web"), // prod: dist/cli.js → dist/web/
-    resolve(here, "../dist/web"), // dev (tsx src/cli.ts): ../dist/web/
-    resolve(here, "../web"), // raw source (only HTML/CSS will work)
+    resolve(here, "web"),
+    resolve(here, "../dist/web"),
+    resolve(here, "../web"),
   ];
   for (const c of candidates) {
     if (existsSync(join(c, "assets", "app.js"))) return c;
@@ -171,6 +167,54 @@ function locateStaticDir(): string {
   throw new Error(
     `could not locate built web assets — run "npm run build" first.\nLooked in:\n  - ${candidates.join("\n  - ")}`
   );
+}
+
+interface NgrokListener {
+  url(): string;
+  close(): Promise<void>;
+}
+
+function ngrokConfigCandidates(): string[] {
+  const home = homedir();
+  const out: string[] = [];
+  if (platform() === "darwin") {
+    out.push(join(home, "Library", "Application Support", "ngrok", "ngrok.yml"));
+  }
+  if (platform() === "win32" && process.env.LOCALAPPDATA) {
+    out.push(join(process.env.LOCALAPPDATA, "ngrok", "ngrok.yml"));
+  }
+  out.push(join(home, ".config", "ngrok", "ngrok.yml"));
+  out.push(join(home, ".ngrok2", "ngrok.yml"));
+  return out;
+}
+
+function readNgrokAuthtokenFromConfig(): string | null {
+  for (const path of ngrokConfigCandidates()) {
+    if (!existsSync(path)) continue;
+    try {
+      const text = readFileSync(path, "utf8");
+      // Matches `authtoken: <token>` at top level OR nested under `agent:`.
+      const m = text.match(/^[ \t]*authtoken:[ \t]*["']?([^\s"'#]+)/m);
+      if (m && m[1]) return m[1];
+    } catch {
+      // ignore unreadable file
+    }
+  }
+  return null;
+}
+
+function resolveNgrokAuthtoken(flags: Flags): string | null {
+  return flags.ngrokAuthtoken ?? process.env.NGROK_AUTHTOKEN ?? readNgrokAuthtokenFromConfig();
+}
+
+async function startNgrok(port: number, authtoken: string, flags: Flags): Promise<NgrokListener> {
+  const modName = "@ngrok/ngrok";
+  const mod = await import(modName);
+  const ngrok = (mod as { default?: unknown }).default ?? mod;
+  const forward = (ngrok as { forward: (opts: Record<string, unknown>) => Promise<NgrokListener> }).forward;
+  const opts: Record<string, unknown> = { addr: port, authtoken };
+  if (flags.ngrokDomain) opts.domain = flags.ngrokDomain;
+  return forward(opts);
 }
 
 async function main() {
@@ -200,18 +244,20 @@ async function main() {
 
   const staticDir = locateStaticDir();
 
-  let tls: TlsConfig | null = null;
-  let tlsGenerated = false;
-  if (flags.https) {
-    if (flags.certPath && flags.keyPath) {
-      tls = await loadCertFromFiles(flags.certPath, flags.keyPath);
-    } else if (flags.certPath || flags.keyPath) {
-      console.error("error: --cert and --key must be provided together");
+  let ngrokListener: NgrokListener | null = null;
+  let publicUrl: string | null = null;
+  let ngrokAuthtoken: string | null = null;
+  if (flags.ngrok) {
+    ngrokAuthtoken = resolveNgrokAuthtoken(flags);
+    if (!ngrokAuthtoken) {
+      console.error(
+        "error: --ngrok requires an authtoken. Provide one of:\n" +
+          "         --ngrok-authtoken <token>\n" +
+          "         NGROK_AUTHTOKEN env var\n" +
+          "         `ngrok config add-authtoken <token>` (persisted to ngrok.yml)\n" +
+          "       Get one at https://dashboard.ngrok.com/get-started/your-authtoken"
+      );
       process.exit(2);
-    } else {
-      const pair = await ensureSelfSignedCert();
-      tls = { cert: pair.cert, key: pair.key };
-      tlsGenerated = pair.generated;
     }
   }
 
@@ -223,8 +269,19 @@ async function main() {
     staticDir,
     command: flags.command,
     idleTimeoutMs: flags.idleTimeoutMs ?? undefined,
-    tls,
+    publicUrl: null,
   });
+
+  if (flags.ngrok && ngrokAuthtoken) {
+    try {
+      ngrokListener = await startNgrok(flags.port, ngrokAuthtoken, flags);
+      publicUrl = ngrokListener.url();
+    } catch (err) {
+      console.error(`error: failed to start ngrok tunnel: ${err instanceof Error ? err.message : String(err)}`);
+      await server.close();
+      process.exit(1);
+    }
+  }
 
   const reset = "\x1b[0m";
   const dim = "\x1b[2m";
@@ -232,11 +289,9 @@ async function main() {
   const cyan = "\x1b[36m";
   const yellow = "\x1b[33m";
 
-  const scheme = tls ? "https" : "http";
-
   if (process.env.RVC_DEV) {
     console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
-    console.log(`${dim}api${reset}  ${scheme}://${flags.host}:${flags.port}`);
+    console.log(`${dim}api${reset}  http://${flags.host}:${flags.port}`);
     return;
   }
 
@@ -244,21 +299,21 @@ async function main() {
   console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
   console.log(`${dim}root:${reset}  ${flags.root}`);
   console.log(`${dim}host:${reset}  ${flags.host}:${flags.port}`);
-  if (tls) {
-    console.log(
-      `${dim}tls:${reset}   ${tlsGenerated ? "self-signed (newly generated)" : "self-signed (cached)"}`
-    );
+  if (publicUrl) {
+    console.log(`${dim}ngrok:${reset} ${publicUrl}`);
   }
   console.log("");
 
+  const tokenSuffix = flags.token ? `?token=${flags.token}` : "";
   const urls: string[] = [];
-  if (flags.domain) {
+  if (publicUrl) {
+    urls.push(`${publicUrl.replace(/\/$/, "")}/${tokenSuffix}`);
+  } else if (flags.domain) {
     const base = flags.domain.replace(/\/$/, "");
-    urls.push(`${base}/${flags.token ? `?token=${flags.token}` : ""}`);
+    urls.push(`${base}/${tokenSuffix}`);
   } else if (flags.host === "0.0.0.0") {
     for (const addr of lanAddresses()) {
-      const u = `${scheme}://${addr}:${flags.port}/${flags.token ? `?token=${flags.token}` : ""}`;
-      urls.push(u);
+      urls.push(`http://${addr}:${flags.port}/${tokenSuffix}`);
     }
     if (urls.length === 0) urls.push(server.url);
   } else {
@@ -288,6 +343,11 @@ async function main() {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`\n${dim}received ${sig}, shutting down…${reset}`);
+    if (ngrokListener) {
+      try {
+        await ngrokListener.close();
+      } catch {}
+    }
     await server.close();
     process.exit(0);
   };

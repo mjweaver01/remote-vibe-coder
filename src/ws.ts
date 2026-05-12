@@ -8,6 +8,11 @@ export interface WsAttachment {
   close: () => void;
 }
 
+// If a viewer has more than this much output queued in ws.bufferedAmount, it
+// is too far behind to catch up — close it. The client will reconnect via
+// WsClient backoff and replay from the session ring buffer.
+const MAX_WS_BUFFER_BYTES = 1 * 1024 * 1024;
+
 export function attachWebSocket(
   server: ServerType,
   sessions: SessionManager,
@@ -37,7 +42,14 @@ export function attachWebSocket(
 function attachViewer(ws: WebSocket, sessions: SessionManager) {
   const sink: ViewerSink = {
     send(msg: ServerMessage) {
-      if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
+      if (ws.readyState !== ws.OPEN) return;
+      if (ws.bufferedAmount > MAX_WS_BUFFER_BYTES) {
+        // Slow viewer: drop them so memory doesn't grow unbounded. The client
+        // will reconnect and replay from the ring buffer.
+        ws.close(1013, "viewer too slow");
+        return;
+      }
+      ws.send(JSON.stringify(msg));
     },
   };
 

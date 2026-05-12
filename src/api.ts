@@ -13,6 +13,7 @@ export interface ApiContext {
   root: string;
   token: string | null;
   port: number;
+  publicUrl?: string | null;
 }
 
 const MAX_BODY_BYTES = 1 * 1024 * 1024; // 1 MB
@@ -159,16 +160,26 @@ function errMessage(err: unknown): string {
 }
 
 function buildPairingUrl(req: IncomingMessage, ctx: ApiContext): string {
+  if (ctx.publicUrl) {
+    const url = new URL(ctx.publicUrl);
+    if (ctx.token) url.searchParams.set("token", ctx.token);
+    return url.toString();
+  }
   const forwardedHost = firstHeader(req.headers["x-forwarded-host"]);
   const forwardedPort = firstHeader(req.headers["x-forwarded-port"]);
   const requestHost = forwardedHost ?? req.headers.host ?? `localhost:${ctx.port}`;
   const [hostname, hostPort] = splitHostPort(requestHost);
-  const portStr = forwardedPort ?? hostPort;
-  const reachableHost = isLoopback(hostname) ? (firstLanIp() ?? hostname) : hostname;
+  const isLoopbackHost = isLoopback(hostname);
+  const reachableHost = isLoopbackHost ? (firstLanIp() ?? hostname) : hostname;
   const proto =
     firstHeader(req.headers["x-forwarded-proto"]) ??
     ((req.socket as { encrypted?: boolean }).encrypted ? "https" : "http");
-  const url = new URL(`${proto}://${reachableHost}:${portStr ?? ctx.port}/`);
+  // Only append a port if one was provided (forwarded or in the Host header),
+  // or we swapped a loopback host for a LAN IP — otherwise the request came in
+  // on a standard port (80/443 via ngrok or a reverse proxy) and we'd produce
+  // a broken URL like https://foo.ngrok-free.app:4311/.
+  const portStr = forwardedPort ?? hostPort ?? (isLoopbackHost ? String(ctx.port) : null);
+  const url = new URL(`${proto}://${reachableHost}${portStr ? `:${portStr}` : ""}/`);
   if (ctx.token) url.searchParams.set("token", ctx.token);
   return url.toString();
 }

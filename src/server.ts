@@ -1,4 +1,3 @@
-import { createServer as createHttpsServer } from "node:https";
 import { readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { Hono } from "hono";
@@ -8,11 +7,6 @@ import { createApiRoutes } from "./api.ts";
 import { SessionManager } from "./sessions.ts";
 import { attachWebSocket } from "./ws.ts";
 
-export interface TlsConfig {
-  cert: string;
-  key: string;
-}
-
 export interface ServerOptions {
   port: number;
   host: string;
@@ -21,7 +15,7 @@ export interface ServerOptions {
   staticDir: string;
   command: string;
   idleTimeoutMs?: number;
-  tls?: TlsConfig | null;
+  publicUrl?: string | null;
 }
 
 export interface RunningServer {
@@ -33,7 +27,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   const sessions = new SessionManager({ command: opts.command, idleTimeoutMs: opts.idleTimeoutMs });
 
   const app = new Hono();
-  app.route("/api", createApiRoutes({ root: opts.root, token: opts.token, port: opts.port }));
+  app.route(
+    "/api",
+    createApiRoutes({
+      root: opts.root,
+      token: opts.token,
+      port: opts.port,
+      publicUrl: opts.publicUrl ?? null,
+    })
+  );
   app.use(
     "/*",
     serveStatic({
@@ -51,21 +53,13 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     }
   });
 
-  const server = opts.tls
-    ? serve({
-        fetch: app.fetch,
-        port: opts.port,
-        hostname: opts.host,
-        createServer: createHttpsServer,
-        serverOptions: { cert: opts.tls.cert, key: opts.tls.key },
-      })
-    : serve({ fetch: app.fetch, port: opts.port, hostname: opts.host });
+  const server = serve({ fetch: app.fetch, port: opts.port, hostname: opts.host });
   const ws = attachWebSocket(server, sessions, opts.token);
 
   await new Promise<void>((ready) => server.once("listening", () => ready()));
 
   return {
-    url: buildUrl(opts.host, opts.port, opts.token, !!opts.tls),
+    url: buildUrl(opts.host, opts.port, opts.token),
     close: async () => {
       sessions.close();
       sessions.killAll();
@@ -75,9 +69,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   };
 }
 
-function buildUrl(host: string, port: number, token: string | null, tls: boolean): string {
+function buildUrl(host: string, port: number, token: string | null): string {
   const displayHost = host === "0.0.0.0" ? "localhost" : host;
-  const scheme = tls ? "https" : "http";
-  const base = `${scheme}://${displayHost}:${port}/`;
+  const base = `http://${displayHost}:${port}/`;
   return token ? `${base}?token=${token}` : base;
 }
