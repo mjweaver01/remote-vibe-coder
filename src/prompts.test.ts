@@ -25,6 +25,32 @@ describe("detectPrompt", () => {
     expect(r.pattern).toBe("input-box-idle");
   });
 
+  it("rejects the idle prompt when a thinking spinner is visible above the box", () => {
+    const tail = [
+      "Some assistant output here.",
+      "",
+      "✶ Pondering… (4s)",
+      "─────────────────",
+      "❯ ",
+      "─────────────────",
+      "?for shortcuts ◐ medium · /effort",
+    ].join("\n");
+    expect(detectPrompt(tail).matched).toBe(false);
+  });
+
+  it("rejects the idle prompt during a tool call", () => {
+    const tail = [
+      "Previous response text.",
+      "",
+      "⏺ Bash(npm test)",
+      "─────────────────",
+      "❯ ",
+      "─────────────────",
+      "?for shortcuts",
+    ].join("\n");
+    expect(detectPrompt(tail).matched).toBe(false);
+  });
+
   it("matches the compact status-line variant", () => {
     const tail = [
       "─────────────────",

@@ -14,7 +14,7 @@ export interface PromptNotifier {
   onExternalUpdate?(info: { sessionId: string; cwdLabel: string; title?: string }): void;
 }
 
-const PROMPT_IDLE_MS = 3000;
+const PROMPT_IDLE_MS = 6000;
 const PROMPT_TAIL_BYTES = 4096;
 
 export const RING_BUFFER_BYTES = 64 * 1024;
@@ -83,10 +83,15 @@ export class SessionManager {
     this.convGrowthUnsub = this.convWatcher.onGrowth((id, kind) => {
       const s = this.sessions.get(id);
       if (!s || s.ended) return;
+      // Only external growth marks the session as "out of date." Local
+      // growth is our own PTY responding — that's a normal in-session event,
+      // not a stale-view signal. The flag drives both the tree-view dot and
+      // the SessionPage "Conversation updated outside this session" banner,
+      // and persists until the session is replaced via reload.
       if (kind === "external") {
-        if (process.env.RVC_DEBUG)
-          console.log(`[sessions] growth id=${id} external -> hasUnseenUpdate=true`);
         if (!s.hasUnseenUpdate) {
+          if (process.env.RVC_DEBUG)
+            console.log(`[sessions] growth id=${id} external -> hasUnseenUpdate=true`);
           s.hasUnseenUpdate = true;
           this.broadcastSessions();
         }
@@ -97,14 +102,6 @@ export class SessionManager {
             cwdLabel: s.cwdLabel,
             title: conv?.title,
           });
-        }
-      } else {
-        // local growth: our PTY produced it; attached viewers already see it.
-        if (s.hasUnseenUpdate) {
-          if (process.env.RVC_DEBUG)
-            console.log(`[sessions] growth id=${id} local -> clearing hasUnseenUpdate`);
-          s.hasUnseenUpdate = false;
-          this.broadcastSessions();
         }
       }
     });
@@ -293,6 +290,10 @@ export class SessionManager {
     });
 
     ptyProc.onExit(({ exitCode }) => {
+      if (process.env.RVC_DEBUG)
+        console.log(
+          `[sessions] ended id=${id} exitCode=${exitCode} hadUnseen=${session.hasUnseenUpdate}`
+        );
       session.ended = true;
       if (session.promptIdleTimer) {
         clearTimeout(session.promptIdleTimer);

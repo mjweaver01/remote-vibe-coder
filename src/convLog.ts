@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import { listConversationFiles, projectsDirFor, readFirstUserMessage } from "./claudeProjects.ts";
+import { listConversationFiles, projectsDirFor, readConversationTitle } from "./claudeProjects.ts";
 
 const REFRESH_MS = 3000;
 // JSONL growth while our PTY has been quiet for this long is treated as an
@@ -96,7 +96,7 @@ export class ConversationLogWatcher {
           entry.knownConvLogSize = sz;
         }
       });
-      void readFirstUserMessage(cwd, convId).then((title) => {
+      void readConversationTitle(cwd, convId).then((title) => {
         if (title && this.entries.get(id) === entry && !entry.title) {
           entry.title = title;
           this.emitChange();
@@ -168,7 +168,7 @@ export class ConversationLogWatcher {
       }
       if (!e.conversationId) continue;
       if (!e.title) {
-        const title = await readFirstUserMessage(e.cwd, e.conversationId);
+        const title = await readConversationTitle(e.cwd, e.conversationId);
         if (title) {
           e.title = title;
           changed = true;

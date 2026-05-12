@@ -1,5 +1,7 @@
 // remote-vibe-coder service worker — handles Web Push delivery.
 // Activated only after the user opts in via the Notifications toggle.
+// SW_VERSION bump forces a byte change so browsers pick up updates on reload.
+const SW_VERSION = "2026-05-12.d";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -21,16 +23,35 @@ self.addEventListener("push", (event) => {
     if (event.data) payload.body = event.data.text();
   }
 
-  const options = {
-    body: payload.body,
-    tag: payload.tag || "rvc-prompt",
-    renotify: true,
-    requireInteraction: false,
-    data: { url: payload.url || "/", sessionId: payload.sessionId },
-    icon: "/favicon.svg",
-    badge: "/favicon.svg",
-  };
-  event.waitUntil(self.registration.showNotification(payload.title, options));
+  event.waitUntil(
+    (async () => {
+      console.log("[rvc-sw]", SW_VERSION, "push", payload.sessionId, payload.tag);
+
+      // Only surface notifications if this browser is currently "tracking"
+      // the app — i.e. has at least one tab open on this origin. If every
+      // tab is closed, suppress (the user isn't watching the active sessions
+      // list, so a desktop banner would be noise).
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      if (clients.length === 0) {
+        console.log("[rvc-sw] suppress: no app tabs open");
+        return;
+      }
+
+      const options = {
+        body: payload.body,
+        tag: payload.tag || "rvc-prompt",
+        renotify: true,
+        requireInteraction: false,
+        data: { url: payload.url || "/", sessionId: payload.sessionId },
+        icon: "/favicon.svg",
+        badge: "/favicon.svg",
+      };
+      await self.registration.showNotification(payload.title, options);
+    })()
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

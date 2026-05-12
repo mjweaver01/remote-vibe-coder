@@ -1,6 +1,6 @@
 // Reads Claude Code's per-cwd session history from ~/.claude/projects/<encoded>/*.jsonl
 
-import { listConversations, readFirstUserMessage } from "./claudeProjects";
+import { listConversations, readConversationTitle } from "./claudeProjects";
 
 export interface PastSession {
   id: string;
@@ -14,7 +14,7 @@ export async function listPastSessions(cwd: string): Promise<PastSession[]> {
   const out: PastSession[] = await Promise.all(
     convs.map(async (c) => ({
       id: c.id,
-      preview: (await readFirstUserMessage(cwd, c.id)) || "(no user message found)",
+      preview: (await readConversationTitle(cwd, c.id)) || "(no user message found)",
       mtime: c.mtime,
       sizeBytes: c.sizeBytes,
     }))

@@ -53,6 +53,60 @@ export async function mostRecentConversationId(cwd: string): Promise<string | nu
   return list[0]?.id ?? null;
 }
 
+/**
+ * Read the title for a conversation. Prefers Claude Code's `ai-title` entry
+ * (the same string the `claude` CLI's session picker shows) and falls back to
+ * the first user message if no `ai-title` has been written yet.
+ *
+ * `ai-title` is rewritten as Claude refines its summary; the *last* one in the
+ * file is canonical, so we scan from the end.
+ */
+export async function readConversationTitle(
+  cwd: string,
+  conversationId: string
+): Promise<string> {
+  const filePath = join(projectsDirFor(cwd), `${conversationId}.jsonl`);
+  let fh;
+  try {
+    fh = await open(filePath, "r");
+  } catch {
+    return "";
+  }
+  try {
+    const { size } = await fh.stat();
+    if (size === 0) return "";
+    const chunkSize = 64 * 1024;
+    let pos = Math.max(0, size - chunkSize);
+    let trailing = "";
+    while (pos >= 0) {
+      const len = Math.min(chunkSize, size - pos);
+      const buf = Buffer.alloc(len);
+      await fh.read(buf, 0, len, pos);
+      const text = buf.toString("utf8") + trailing;
+      const lines = text.split("\n");
+      trailing = pos > 0 ? (lines.shift() ?? "") : "";
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i]!.trim();
+        if (!line || !line.includes('"ai-title"')) continue;
+        try {
+          const evt = JSON.parse(line);
+          if (evt.type === "ai-title" && typeof evt.aiTitle === "string" && evt.aiTitle) {
+            const clean = sanitizePrompt(evt.aiTitle) || evt.aiTitle.trim();
+            if (clean) return clean.slice(0, 200);
+          }
+        } catch {
+          // not JSON — keep scanning
+        }
+      }
+      if (pos === 0) break;
+      pos = Math.max(0, pos - chunkSize);
+    }
+  } finally {
+    await fh.close();
+  }
+  return readFirstUserMessage(cwd, conversationId);
+}
+
 export async function readFirstUserMessage(cwd: string, conversationId: string): Promise<string> {
   const filePath = join(projectsDirFor(cwd), `${conversationId}.jsonl`);
   let fh;
@@ -113,23 +167,14 @@ function sanitizePrompt(input: string): string {
   // Surface slash-command name before stripping, so "/init" survives.
   const slash = input.match(/<command-name>\s*([^<\s]+)\s*<\/command-name>/);
 
-  // Drop known wrapper tags along with their content.
+  // Strip any Claude Code wrapper tag along with its content. The set of
+  // wrappers grows over time (command-*, local-command-*, ide_*, bash-*,
+  // system-reminder, user-prompt-submit-hook, local-command-caveat, …), so
+  // match the shape generically rather than maintaining a whitelist.
   const stripped = input
-    .replace(/<command-name>[\s\S]*?<\/command-name>/g, "")
-    .replace(/<command-message>[\s\S]*?<\/command-message>/g, "")
-    .replace(/<command-args>[\s\S]*?<\/command-args>/g, "")
-    .replace(/<command-stdout>[\s\S]*?<\/command-stdout>/g, "")
-    .replace(/<command-stderr>[\s\S]*?<\/command-stderr>/g, "")
-    .replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g, "")
-    .replace(/<local-command-stderr>[\s\S]*?<\/local-command-stderr>/g, "")
-    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "")
-    .replace(/<user-prompt-submit-hook>[\s\S]*?<\/user-prompt-submit-hook>/g, "")
-    .replace(/<ide_selection>[\s\S]*?<\/ide_selection>/g, "")
-    .replace(/<ide_opened_file>[\s\S]*?<\/ide_opened_file>/g, "")
-    .replace(/<ide_diagnostics>[\s\S]*?<\/ide_diagnostics>/g, "")
-    .replace(/<bash-input>[\s\S]*?<\/bash-input>/g, "")
-    .replace(/<bash-stdout>[\s\S]*?<\/bash-stdout>/g, "")
-    .replace(/<bash-stderr>[\s\S]*?<\/bash-stderr>/g, "")
+    .replace(/<([a-z][a-z0-9_-]*)>[\s\S]*?<\/\1>/gi, "")
+    // Self-closing or orphan opens (e.g. injected metadata)
+    .replace(/<\/?[a-z][a-z0-9_-]*\s*\/?>/gi, "")
     .replace(/\s+/g, " ")
     .trim();
 

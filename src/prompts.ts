@@ -7,6 +7,13 @@
 const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
 const CR_RE = /\r(?!\n)/g;
 
+// Markers Claude Code renders just above the input box while it is mid-turn.
+// `⏺` is the tool-call bullet ("⏺ Bash …"). Words like "Pondering", "Working",
+// "Thinking", "Generating" prefix the model-thinking spinner. Star-style and
+// circle-style glyphs are the rotating spinner indicators themselves.
+const THINKING_RE =
+  /⏺|✶|✷|✸|✦|⋆|◐|◑|◒|◓|\bPondering\b|\bThinking\b|\bWorking\b|\bGenerating\b|\bReading\b|\bWriting\b|\bRunning\b|\bSearching\b|\bLoading\b/i;
+
 interface Pattern {
   name: string;
   test: (text: string) => boolean;
@@ -41,14 +48,22 @@ const PROMPT_PATTERNS: Pattern[] = [
   {
     name: "input-box-idle",
     // Claude Code's idle prompt — a `❯` line between horizontal-rule borders
-    // with the "?for shortcuts" status line below it.
+    // with the "?for shortcuts" status line below it. We additionally require
+    // that no "thinking spinner" is visible just above the input box, because
+    // that area renders activity like "* Pondering" / "⏺ Bash …" / progress
+    // glyphs while Claude is mid-turn. Without this check, a long tool call
+    // or network pause can look identical to "done."
     test: (t) => {
       const tail = t.split("\n").slice(-20).join("\n");
-      return /─{6,}/.test(tail) && /\?\s*for\s*shortcuts/i.test(tail);
+      if (!/─{6,}/.test(tail)) return false;
+      if (!/\?\s*for\s*shortcuts/i.test(tail)) return false;
+      // Inspect the few lines immediately above the first border line.
+      const lines = tail.split("\n");
+      const firstBorder = lines.findIndex((l) => /─{6,}/.test(l));
+      const above = lines.slice(Math.max(0, firstBorder - 4), firstBorder).join("\n");
+      if (THINKING_RE.test(above)) return false;
+      return true;
     },
-    // For the idle case, pulling "lastNonEmptyLine" would return the status
-    // bar ("?for shortcuts ◐ medium · /effort"), which is useless as a
-    // notification body. Use a fixed message — the user knows what it means.
     preview: () => "Claude finished responding",
   },
 ];

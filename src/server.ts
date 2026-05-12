@@ -49,20 +49,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           tag: `rvc-prompt-${sessionId}`,
         });
       },
-      onExternalUpdate: ({ sessionId, cwdLabel, title }) => {
-        if (process.env.RVC_DEBUG)
-          console.log(
-            `[push] onExternalUpdate id=${sessionId} subscribers=${push.hasSubscribers() ? "yes" : "no"}`
-          );
-        if (!push.hasSubscribers()) return;
-        void push.send({
-          title: title ? `${cwdLabel}: ${title}` : `${cwdLabel} — conversation updated`,
-          body: "Updated by another Claude session.",
-          url: `/s/${sessionId}`,
-          sessionId,
-          tag: `rvc-external-${sessionId}`,
-        });
-      },
     },
   });
 
@@ -116,6 +102,24 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   });
   app.get("/index.html", async (c) => {
     return serveIndexWithToken(c, opts.staticDir);
+  });
+
+  // Service worker must be revalidated on every reload so SW updates roll out
+  // without users having to manually unregister.
+  app.get("/sw.js", async (c) => {
+    const filePath = join(opts.staticDir, "sw.js");
+    try {
+      const body = await readFile(filePath);
+      return new Response(body, {
+        headers: {
+          "content-type": "application/javascript; charset=utf-8",
+          "cache-control": "no-cache, no-store, must-revalidate",
+          "service-worker-allowed": "/",
+        },
+      });
+    } catch {
+      return c.notFound();
+    }
   });
 
   app.use(
