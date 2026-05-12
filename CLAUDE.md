@@ -397,11 +397,11 @@ The total CSS is ~1300 lines. Tailwind's overhead (PostCSS, JIT, purge config) i
 ## Known Constraints and Gotchas
 
 - **`noUncheckedIndexedAccess` bites CLI arg parsing.** Any `argv[i]` returns `string | undefined`. Use the `next(flagName)` helper in `cli.ts` as the pattern.
-- **Monaco and `dist/web/`.** Vite's `emptyOutDir: false` is set deliberately — the monaco `min/vs/` tree is copied separately in `src/build.ts` and must not be deleted by Vite on rebuild.
-- **`claude --resume <id>` and null originalFile.** Older Claude CLI versions (< 2.1.138) crash when resuming a conversation that included a "create new file" Edit operation. Past-conversation list items now use `--continue` to avoid this. The CLI was updated to 2.1.138 to fix the root cause.
-- **Session list is in-memory.** Server restart clears all sessions. This is by design for MVP — there is no persistence layer.
-- **Token in `sessionStorage`.** The one-shot token from the QR URL is stored in `sessionStorage` after the first load. It is NOT in `localStorage` — it clears when the browser tab is closed. This is intentional (security: a shared device doesn't permanently store the token).
-- **SPA fallback catches everything.** Any path not matched by a REST endpoint or static file returns `index.html`. This means 404s from mistyped API paths will silently return HTML. Keep API paths under `/api/` and check `url.pathname` carefully when adding new routes.
+- **Monaco and `dist/web/`.** Vite's `emptyOutDir: false` is set deliberately — the monaco AMD tree is copied separately by `src/build.ts` to `dist/web/assets/monaco/vs/` and must not be wiped by Vite on rebuild.
+- **Session list is in-memory.** Server restart clears all sessions. There is no persistence layer.
+- **Token in `sessionStorage`.** The one-shot token from the QR URL is stored in `sessionStorage` after the first load — never `localStorage`. It clears when the tab closes; this is intentional so a shared device doesn't permanently retain the token.
+- **API 404s return JSON, not the SPA.** The API sub-app has its own `app.all("*", → 404 JSON)` catch-all (`src/api.ts`) so mistyped `/api/*` paths return JSON. Only non-`/api/*` unknown paths fall through to `index.html` for React Router.
+- **ngrok and the token.** When `--ngrok` is set (or host is non-loopback) and `--token` was not explicitly passed, a token is auto-generated. Use `--no-token` to opt out (insecure on a public URL).
 
 ---
 
@@ -409,8 +409,8 @@ The total CSS is ~1300 lines. Tailwind's overhead (PostCSS, JIT, purge config) i
 
 Do not add these without explicit discussion:
 
-- **TLS / HTTPS.** Use Tailscale or SSH tunnel for over-WAN access.
 - **Multi-user / auth beyond token.** The token is intentionally a single shared secret.
-- **Session persistence across server restarts.** In-memory is fine for the use case.
 - **A custom permission UI.** Claude Code's TUI permission prompts are answered via the terminal — that's the point. The 1/2/3 keybar buttons exist precisely for this.
 - **Abstracting the CSS into a component library or Tailwind.** The current approach is intentional.
+
+HTTPS is now supported via `--ngrok` (see `src/cli.ts`). Session persistence across server restarts is still in-memory only — sessions are cleared on restart.

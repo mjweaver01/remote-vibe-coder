@@ -26,11 +26,21 @@ Open the printed URL. Binds to `127.0.0.1` by default.
 
 ## Connect from your phone
 
+On your LAN:
+
 ```bash
 npx rvc --root ~/Websites --host 0.0.0.0
 ```
 
+Over the internet, via an HTTPS ngrok tunnel:
+
+```bash
+npx rvc --root ~/Websites --ngrok
+```
+
 A QR code is printed on startup. Scan it — the URL carries a one-shot token stored in `sessionStorage` after first load.
+
+`--ngrok` requires an authtoken (get one at https://dashboard.ngrok.com). Provide it via `--ngrok-authtoken <t>`, the `NGROK_AUTHTOKEN` env var, or `ngrok config add-authtoken <t>`. Use `--ngrok-domain <d>` to pin a reserved domain.
 
 ## Features
 
@@ -49,18 +59,22 @@ A QR code is printed on startup. Scan it — the URL carries a one-shot token st
 ```
 rvc [options]   # alias of remote-vibe-coder
 
-  -p, --port <n>         Port to listen on (default: 4310)
-  -H, --host <addr>      Bind address (default: 127.0.0.1; 0.0.0.0 for LAN)
-  -r, --root <path>      Folder you can browse (default: ~/Websites)
-  -t, --token <str>      Require ?token=… (auto-generated on non-loopback host)
-      --no-token         Skip token (insecure on LAN)
-  -c, --command <bin>    Command to run in each session (default: claude)
-  -h, --help             Show this help
+  -p, --port <n>             Port to listen on (default: 4310)
+  -H, --host <addr>          Bind address (default: 127.0.0.1; 0.0.0.0 for LAN)
+  -r, --root <path>          Folder you can browse (default: ~/Websites)
+  -t, --token <str>          Require ?token=… (auto-generated with --ngrok or non-loopback host)
+      --no-token             Skip token (insecure)
+  -c, --command <bin>        Command to run in each session (default: claude)
+      --idle-timeout <m>     Kill sessions idle for more than <m> minutes
+      --ngrok                Expose via ngrok tunnel (HTTPS)
+      --ngrok-authtoken <t>  ngrok authtoken (overrides NGROK_AUTHTOKEN env). Implies --ngrok.
+      --ngrok-domain <d>     Reserved ngrok domain. Implies --ngrok.
+  -h, --help                 Show this help
 ```
 
 ## Trust model
 
-The token is shown only on the local TTY where the server starts. Anyone with it can run `claude` as you — treat it like an SSH key. For WAN access, prefer Tailscale or an SSH tunnel.
+The token is shown only on the local TTY where the server starts. Anyone with it can run `claude` as you — treat it like an SSH key. For WAN access, use `--ngrok` (HTTPS tunnel), Tailscale, or an SSH tunnel.
 
 ## Development
 
