@@ -42,7 +42,6 @@
   border-radius: 3px;
 }
 
-
 /* ----- Scroll-to-bottom floating button ----- */
 .term-scroll-bottom {
   position: absolute;
@@ -101,10 +100,22 @@
   box-shadow: 0 0 8px var(--accent-glow);
 }
 @keyframes rvc-replay-banner {
-  0% { opacity: 0; transform: translate(-50%, -6px); }
-  15% { opacity: 1; transform: translate(-50%, 0); }
-  75% { opacity: 1; transform: translate(-50%, 0); }
-  100% { opacity: 0; transform: translate(-50%, -4px); }
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  75% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -4px);
+  }
 }
 
 /* Off-screen soft-keyboard target. Mobile only — desktop just uses xterm input. */
@@ -290,10 +301,18 @@
   background: var(--bg-3);
   color: var(--text);
 }
-.gb-dpad-up    { grid-area: up; }
-.gb-dpad-left  { grid-area: lt; }
-.gb-dpad-right { grid-area: rt; }
-.gb-dpad-down  { grid-area: dn; }
+.gb-dpad-up {
+  grid-area: up;
+}
+.gb-dpad-left {
+  grid-area: lt;
+}
+.gb-dpad-right {
+  grid-area: rt;
+}
+.gb-dpad-down {
+  grid-area: dn;
+}
 .gb-dpad-hub {
   grid-area: hub;
   background: var(--hub-bg);

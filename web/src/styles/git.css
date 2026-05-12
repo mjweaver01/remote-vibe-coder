@@ -195,11 +195,21 @@
   margin-left: auto;
   padding-right: 2px;
 }
-.git-badge-modified  { color: var(--git-modified); }
-.git-badge-added     { color: var(--git-added); }
-.git-badge-deleted   { color: var(--git-deleted); }
-.git-badge-renamed   { color: var(--git-added); }
-.git-badge-untracked { color: var(--git-untracked); }
+.git-badge-modified {
+  color: var(--git-modified);
+}
+.git-badge-added {
+  color: var(--git-added);
+}
+.git-badge-deleted {
+  color: var(--git-deleted);
+}
+.git-badge-renamed {
+  color: var(--git-added);
+}
+.git-badge-untracked {
+  color: var(--git-untracked);
+}
 
 /* ----- Commit composer ----- */
 .git-commit-box {

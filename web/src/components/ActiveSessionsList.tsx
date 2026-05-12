@@ -11,12 +11,7 @@ interface Props {
   fallback?: (s: SessionInfo) => string;
 }
 
-export function ActiveSessionsList({
-  sessions,
-  activeIds,
-  showCwd = false,
-  fallback,
-}: Props) {
+export function ActiveSessionsList({ sessions, activeIds, showCwd = false, fallback }: Props) {
   if (sessions.length === 0) return null;
   const sorted = [...sessions].sort((a, b) => b.createdAt - a.createdAt);
   return (
@@ -26,11 +21,7 @@ export function ActiveSessionsList({
         const title = s.title || (fallback ? fallback(s) : s.cwdLabel);
         const meta = [
           showCwd && s.title ? s.cwdLabel : null,
-          s.viewers > 0
-            ? s.viewers === 1
-              ? "1 viewer"
-              : `${s.viewers} viewers`
-            : null,
+          s.viewers > 0 ? (s.viewers === 1 ? "1 viewer" : `${s.viewers} viewers`) : null,
         ]
           .filter(Boolean)
           .join(" · ");

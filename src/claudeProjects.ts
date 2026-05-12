@@ -53,10 +53,7 @@ export async function mostRecentConversationId(cwd: string): Promise<string | nu
   return list[0]?.id ?? null;
 }
 
-export async function readFirstUserMessage(
-  cwd: string,
-  conversationId: string
-): Promise<string> {
+export async function readFirstUserMessage(cwd: string, conversationId: string): Promise<string> {
   const filePath = join(projectsDirFor(cwd), `${conversationId}.jsonl`);
   let fh;
   try {

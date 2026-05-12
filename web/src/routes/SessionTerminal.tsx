@@ -187,11 +187,7 @@ export function SessionTerminal() {
           </button>
         )}
       </div>
-      <Keybar
-        onSend={sendKey}
-        onKill={onKill}
-        voiceSlot={<VoiceButton onText={sendVoiceText} />}
-      />
+      <Keybar onSend={sendKey} onKill={onKill} voiceSlot={<VoiceButton onText={sendVoiceText} />} />
       <input
         ref={kbdTrapRef}
         className="kbd-trap"

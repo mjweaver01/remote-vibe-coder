@@ -12,7 +12,11 @@ describe("parsePorcelainZ", () => {
   it("parses an untracked file", () => {
     const r = parsePorcelainZ("?? new.txt\0", ROOT);
     expect(r.untracked).toHaveLength(1);
-    expect(r.untracked[0]).toMatchObject({ relPath: "new.txt", indexStatus: "?", workingStatus: "?" });
+    expect(r.untracked[0]).toMatchObject({
+      relPath: "new.txt",
+      indexStatus: "?",
+      workingStatus: "?",
+    });
     expect(r.staged).toHaveLength(0);
     expect(r.unstaged).toHaveLength(0);
   });
@@ -20,7 +24,11 @@ describe("parsePorcelainZ", () => {
   it("parses a staged modification (M )", () => {
     const r = parsePorcelainZ("M  src/a.ts\0", ROOT);
     expect(r.staged).toHaveLength(1);
-    expect(r.staged[0]).toMatchObject({ relPath: "src/a.ts", indexStatus: "M", workingStatus: " " });
+    expect(r.staged[0]).toMatchObject({
+      relPath: "src/a.ts",
+      indexStatus: "M",
+      workingStatus: " ",
+    });
     expect(r.unstaged).toHaveLength(0);
   });
 

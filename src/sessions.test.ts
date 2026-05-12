@@ -98,7 +98,9 @@ describe("SessionManager resize policy", () => {
     };
   }
 
-  async function withSession(fn: (mgr: SessionManager, id: string, obs: ReturnType<typeof observer>) => Promise<void>) {
+  async function withSession(
+    fn: (mgr: SessionManager, id: string, obs: ReturnType<typeof observer>) => Promise<void>
+  ) {
     // `cat` sits idle reading stdin — a real PTY that won't exit on its own.
     const mgr = new SessionManager({ command: "cat" });
     const obs = observer();

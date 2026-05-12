@@ -42,8 +42,7 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
 
     const readTheme = () => {
       const root = getComputedStyle(document.documentElement);
-      const v = (name: string, fallback: string) =>
-        (root.getPropertyValue(name).trim() || fallback);
+      const v = (name: string, fallback: string) => root.getPropertyValue(name).trim() || fallback;
       return {
         background: v("--bg-black", "#000000"),
         foreground: v("--text", "#e9e9ec"),

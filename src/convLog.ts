@@ -1,10 +1,6 @@
 import { stat } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  listConversationFiles,
-  projectsDirFor,
-  readFirstUserMessage,
-} from "./claudeProjects.ts";
+import { listConversationFiles, projectsDirFor, readFirstUserMessage } from "./claudeProjects.ts";
 
 const REFRESH_MS = 3000;
 const QUIET_MS = 2500;

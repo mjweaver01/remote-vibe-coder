@@ -196,4 +196,3 @@ export async function gitDiff(
 
   return { path: file, original, modified, staged: false, inGit: true, isUntracked };
 }
-

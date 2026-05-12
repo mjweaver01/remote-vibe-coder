@@ -30,14 +30,7 @@ async function buildServer() {
     bundle: true,
     sourcemap: true,
     logLevel: "warning",
-    external: [
-      "node-pty",
-      "qrcode",
-      "qrcode-terminal",
-      "ws",
-      "web-push",
-      "@ducky.wtf/cli",
-    ],
+    external: ["node-pty", "qrcode", "qrcode-terminal", "ws", "web-push", "@ducky.wtf/cli"],
     banner: { js: "#!/usr/bin/env node" },
   });
   chmodSync(join(distDir, "cli.js"), 0o755);

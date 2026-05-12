@@ -51,9 +51,8 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
 
 export async function enablePush(): Promise<void> {
   if (!isPushSupported()) throw new Error("Push not supported in this browser.");
-  const permission = Notification.permission === "granted"
-    ? "granted"
-    : await Notification.requestPermission();
+  const permission =
+    Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
   if (permission !== "granted") throw new Error("Notification permission denied.");
 
   const keyRes = await fetch(withToken("/api/push/vapid-public-key"));

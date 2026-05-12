@@ -98,8 +98,8 @@
 
   /* ─── Type ─────────────────────────────────────────────── */
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
-    "Segoe UI", system-ui, sans-serif;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
 
   /* ─── Motion ───────────────────────────────────────────── */
   --t-fast: 80ms;

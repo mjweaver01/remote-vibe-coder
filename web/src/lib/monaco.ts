@@ -41,7 +41,11 @@ export function loadMonaco(): Promise<any> {
     script.onload = () => {
       try {
         window.require.config({ paths: { vs: "/assets/monaco/vs" } });
-        window.require(["vs/editor/editor.main"], () => done(window.monaco), (err: unknown) => done(null, err instanceof Error ? err : new Error(String(err))));
+        window.require(
+          ["vs/editor/editor.main"],
+          () => done(window.monaco),
+          (err: unknown) => done(null, err instanceof Error ? err : new Error(String(err)))
+        );
       } catch (err) {
         done(null, err instanceof Error ? err : new Error(String(err)));
       }

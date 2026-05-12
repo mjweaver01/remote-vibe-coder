@@ -124,15 +124,15 @@ function printHelp() {
 Usage: remote-vibe-coder [options]
 
 Options:
-  -p, --port <n>             Port to listen on (default: 4310)
-  -H, --host <addr>          Bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
-  -r, --root <path>          Folder you can browse (default: ~/Websites)
-  -t, --token <str>          Require ?token=… (auto-generated when --https/--ducky or non-loopback host)
-      --no-token             Skip token (insecure)
-  -c, --command <bin>        Command to run in each session (default: claude)
-      --idle-timeout <m>     Kill sessions idle for more than <m> minutes
-      --https, --ducky       Expose via a public HTTPS tunnel (ducky.wtf, anonymous)
-  -h, --help                 Show this help
+-p, --port <n>             Port to listen on (default: 4310)
+-H, --host <addr>          Bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
+-r, --root <path>          Folder you can browse (default: ~/Websites)
+-t, --token <str>          Require ?token=… (auto-generated when --https/--ducky or non-loopback host)
+    --no-token             Skip token (insecure)
+-c, --command <bin>        Command to run in each session (default: claude)
+    --idle-timeout <m>     Kill sessions idle for more than <m> minutes
+    --https, --ducky       Expose via a public HTTPS tunnel (ducky.wtf, anonymous)
+-h, --help                 Show this help
 `);
 }
 

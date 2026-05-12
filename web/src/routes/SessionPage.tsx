@@ -106,11 +106,7 @@ export function SessionPage() {
             onClick={() => navigate(session?.cwd ? `/p/${encodeURIComponent(session.cwd)}` : "/")}
           />
         }
-        title={
-          session
-            ? session.title || session.cwdLabel
-            : `session ${sessionId.slice(0, 6)}`
-        }
+        title={session ? session.title || session.cwdLabel : `session ${sessionId.slice(0, 6)}`}
         subtitle={
           session ? (
             <span>

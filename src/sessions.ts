@@ -384,7 +384,9 @@ function sleep(ms: number): Promise<void> {
 
 export function appendRing(buf: Buffer, chunk: string): Buffer {
   const next =
-    buf.length === 0 ? Buffer.from(chunk, "utf8") : Buffer.concat([buf, Buffer.from(chunk, "utf8")]);
+    buf.length === 0
+      ? Buffer.from(chunk, "utf8")
+      : Buffer.concat([buf, Buffer.from(chunk, "utf8")]);
   if (next.length <= RING_BUFFER_BYTES + RING_SLACK_BYTES) return next;
   let offset = next.length - RING_BUFFER_BYTES;
   // Advance past UTF-8 continuation bytes (0x80–0xBF) to land on a character boundary

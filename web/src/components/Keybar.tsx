@@ -113,12 +113,7 @@ export function Keybar({ onSend, onKill, voiceSlot }: Props) {
 
       {/* Utility row — Tab · Clear · Kill */}
       <div className="gb-utility">
-        <button
-          className="gb-util-btn"
-          onClick={() => onSend("\t")}
-          title="Tab"
-          aria-label="Tab"
-        >
+        <button className="gb-util-btn" onClick={() => onSend("\t")} title="Tab" aria-label="Tab">
           Tab
         </button>
         <button

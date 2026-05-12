@@ -1,21 +1,8 @@
 import { useState, useCallback } from "react";
-import {
-  Check,
-  File,
-  GitBranch,
-  GitCommit,
-  Minus,
-  Plus,
-  RefreshCw,
-} from "./icons.ts";
+import { Check, File, GitBranch, GitCommit, Minus, Plus, RefreshCw } from "./icons.ts";
 import { useAsync } from "../hooks/useAsync.ts";
 import { useToast } from "../hooks/useToast.ts";
-import {
-  fetchGitStatus,
-  postGitCommit,
-  postGitStage,
-  postGitUnstage,
-} from "../lib/api.ts";
+import { fetchGitStatus, postGitCommit, postGitStage, postGitUnstage } from "../lib/api.ts";
 import type { GitFileStatus } from "../lib/api.ts";
 
 interface Props {
@@ -63,23 +50,23 @@ interface FileRowProps {
   actionLabel: string;
 }
 
-function FileRow({ entry, statusCode, selected, onSelect, onAction, actionLabel, actionIcon }: FileRowProps) {
+function FileRow({
+  entry,
+  statusCode,
+  selected,
+  onSelect,
+  onAction,
+  actionLabel,
+  actionIcon,
+}: FileRowProps) {
   const name = entry.relPath.split("/").pop() ?? entry.relPath;
   const dir = entry.relPath.includes("/")
     ? entry.relPath.slice(0, entry.relPath.lastIndexOf("/"))
     : null;
 
   return (
-    <div
-      className={`git-file-row${selected ? " is-selected" : ""}`}
-      role="row"
-    >
-      <button
-        type="button"
-        className="git-file-main"
-        onClick={onSelect}
-        title={entry.relPath}
-      >
+    <div className={`git-file-row${selected ? " is-selected" : ""}`} role="row">
+      <button type="button" className="git-file-main" onClick={onSelect} title={entry.relPath}>
         <File size={13} className="git-file-icon" aria-hidden="true" />
         <span className="git-file-name">{name}</span>
         {dir && <span className="git-file-dir">{dir}</span>}
@@ -110,10 +97,7 @@ export function GitPanel({ cwd, onSelectFile, selectedPath }: Props) {
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  const status = useAsync(
-    (signal) => fetchGitStatus(cwd, signal),
-    [cwd, reloadKey]
-  );
+  const status = useAsync((signal) => fetchGitStatus(cwd, signal), [cwd, reloadKey]);
 
   const stage = async (files: string[]) => {
     try {
@@ -163,7 +147,9 @@ export function GitPanel({ cwd, onSelectFile, selectedPath }: Props) {
     return (
       <div className="git-panel-error">
         <span>{status.error.message}</span>
-        <button type="button" className="btn" onClick={reload}>Retry</button>
+        <button type="button" className="btn" onClick={reload}>
+          Retry
+        </button>
       </div>
     );
   }
@@ -225,9 +211,7 @@ export function GitPanel({ cwd, onSelectFile, selectedPath }: Props) {
             ) : (
               <GitCommit size={13} aria-hidden="true" />
             )}
-            <span>
-              {commitSuccess ? "Committed" : committing ? "Committing…" : "Commit"}
-            </span>
+            <span>{commitSuccess ? "Committed" : committing ? "Committing…" : "Commit"}</span>
           </button>
         </div>
       )}

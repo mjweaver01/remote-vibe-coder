@@ -136,7 +136,14 @@ export function MonacoCode({ diff, code, fileName }: Props) {
   }, [diff?.original, diff?.modified, code, fileName]);
 
   if (loadError) {
-    return <EmptyState icon={AlertCircle} title="Editor failed to load" description={loadError} tone="error" />;
+    return (
+      <EmptyState
+        icon={AlertCircle}
+        title="Editor failed to load"
+        description={loadError}
+        tone="error"
+      />
+    );
   }
 
   return <div ref={containerRef} className="monaco-host" />;

@@ -99,11 +99,9 @@ export class PushService {
     await Promise.all(
       [...this.subs.values()].map(async (rec) => {
         try {
-          await webpush.sendNotification(
-            { endpoint: rec.endpoint, keys: rec.keys },
-            body,
-            { TTL: 60 }
-          );
+          await webpush.sendNotification({ endpoint: rec.endpoint, keys: rec.keys }, body, {
+            TTL: 60,
+          });
         } catch (err) {
           const status = (err as { statusCode?: number }).statusCode;
           if (status === 404 || status === 410) dead.push(rec.endpoint);

@@ -68,8 +68,7 @@ export function VoiceButton({ onText }: Props) {
     // error from the recognizer. Fall back to the CSS pulse animation there.
     const ua = navigator.userAgent;
     const isIOS =
-      /iPad|iPhone|iPod/.test(ua) ||
-      (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+      /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
     if (isIOS) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

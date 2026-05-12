@@ -62,7 +62,11 @@ function PairDeviceModal({ onClose }: { onClose: () => void }) {
               type="button"
               className="pair-signout"
               onClick={() => {
-                if (window.confirm("Sign out of this device? You'll need to re-pair with a QR or token URL.")) {
+                if (
+                  window.confirm(
+                    "Sign out of this device? You'll need to re-pair with a QR or token URL."
+                  )
+                ) {
                   signOut();
                 }
               }}
