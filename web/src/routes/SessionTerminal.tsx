@@ -6,6 +6,7 @@ import { VoiceButton } from "../components/VoiceButton.tsx";
 import { XTerm, type XTermHandle } from "../components/XTerm.tsx";
 import { useToast } from "../hooks/useToast.ts";
 import { useWs } from "../hooks/useWs.ts";
+import { useWsStatus } from "../hooks/useWsStatus.ts";
 import type { SessionInfo, ServerMessage } from "../../../src/types.ts";
 
 interface OutletCtx {
@@ -17,6 +18,7 @@ export function SessionTerminal() {
   const { sessionId = "" } = useParams<{ sessionId: string }>();
   const { session, onKill } = useOutletContext<OutletCtx>();
   const ws = useWs();
+  const wsStatus = useWsStatus();
   const toast = useToast();
 
   const [replayBanner, setReplayBanner] = useState(false);
@@ -24,11 +26,18 @@ export function SessionTerminal() {
   const termRef = useRef<XTermHandle | null>(null);
   const kbdTrapRef = useRef<HTMLInputElement | null>(null);
   const joinedRef = useRef(false);
+  const lastStatusRef = useRef(wsStatus);
+  const lastDimsRef = useRef<{ cols: number; rows: number }>({
+    cols: session.cols || 80,
+    rows: session.rows || 24,
+  });
 
   // Pipe terminal events into the websocket
   const handleData = (data: string) => ws.send({ type: "input", sessionId, data });
-  const handleResize = (cols: number, rows: number) =>
+  const handleResize = (cols: number, rows: number) => {
+    lastDimsRef.current = { cols, rows };
     ws.send({ type: "resize", sessionId, cols, rows });
+  };
 
   // Subscribe to messages targeting this session
   useEffect(() => {
@@ -65,8 +74,8 @@ export function SessionTerminal() {
     ws.send({
       type: "join",
       sessionId,
-      cols: session.cols || 80,
-      rows: session.rows || 24,
+      cols: lastDimsRef.current.cols,
+      rows: lastDimsRef.current.rows,
     });
     return () => {
       ws.send({ type: "detach", sessionId });
@@ -74,6 +83,38 @@ export function SessionTerminal() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  // Re-join whenever the WS reconnects. The server detaches us on socket close
+  // so a stale browser tab waking up needs to re-attach to resume output.
+  useEffect(() => {
+    const prev = lastStatusRef.current;
+    lastStatusRef.current = wsStatus;
+    if (wsStatus !== "open") return;
+    if (prev === "open") return;
+    if (!joinedRef.current) return;
+    ws.send({
+      type: "join",
+      sessionId,
+      cols: lastDimsRef.current.cols,
+      rows: lastDimsRef.current.rows,
+    });
+  }, [ws, wsStatus, sessionId]);
+
+  // When the tab regains focus, kick a reconnect if the WS isn't open. Some
+  // browsers silently freeze the socket while backgrounded.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && ws.getStatus() !== "open") {
+        ws.retry();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [ws]);
 
   // Wire the soft-keyboard trap input
   useEffect(() => {

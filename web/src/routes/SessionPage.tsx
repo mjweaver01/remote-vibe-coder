@@ -1,10 +1,22 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate, useParams } from "react-router";
-import { ArrowLeft, Code2, FileX, Inbox, SquareTerminal, Trash2 } from "../components/icons.ts";
+import {
+  AlertCircle,
+  ArrowLeft,
+  Code2,
+  FileX,
+  Inbox,
+  Loader2,
+  RefreshCw,
+  SquareTerminal,
+  Trash2,
+} from "../components/icons.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { IconButton } from "../components/IconButton.tsx";
 import { Topbar } from "../components/Topbar.tsx";
 import { useSession } from "../hooks/useSessions.ts";
 import { useWs } from "../hooks/useWs.ts";
+import type { ServerMessage } from "../../../src/types.ts";
 
 export function SessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -27,6 +39,58 @@ export function SessionPage() {
       navigate(cwd ? `/p/${encodeURIComponent(cwd)}` : "/");
     }
   };
+
+  const [reloading, setReloading] = useState(false);
+  // Snapshot the info needed to respawn, taken at click time. We can't read it
+  // off `session` later because the server deletes the entry on `ended`, which
+  // would null out cwd/conversationId before we get to fire `create`.
+  const reloadCtxRef = useRef<{
+    cwd: string;
+    conversationId: string;
+    cols: number;
+    rows: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!reloading) return;
+    const ctx = reloadCtxRef.current;
+    if (!ctx) return;
+    const off = ws.onMessage((m: ServerMessage) => {
+      if (m.type === "ended" && m.sessionId === sessionId) {
+        ws.send({
+          type: "create",
+          cwd: ctx.cwd,
+          cols: ctx.cols,
+          rows: ctx.rows,
+          mode: { kind: "resume", conversationId: ctx.conversationId },
+        });
+      } else if (
+        m.type === "created" &&
+        m.session.cwd === ctx.cwd &&
+        m.session.conversationId === ctx.conversationId
+      ) {
+        reloadCtxRef.current = null;
+        setReloading(false);
+        navigate(`/s/${m.session.id}`, { replace: true });
+      }
+    });
+    return off;
+  }, [reloading, sessionId, ws, navigate]);
+
+  const handleReload = () => {
+    if (reloading) return;
+    if (!session?.conversationId) return;
+    reloadCtxRef.current = {
+      cwd: session.cwd,
+      conversationId: session.conversationId,
+      cols: session.cols || 80,
+      rows: session.rows || 24,
+    };
+    setReloading(true);
+    ws.send({ type: "kill", sessionId });
+  };
+
+  const showExternalBanner = !!(session?.externallyUpdated && session.conversationId) || reloading;
 
   return (
     <main className="page page-session">
@@ -64,6 +128,31 @@ export function SessionPage() {
         }
       />
 
+      {showExternalBanner ? (
+        <div className="external-banner" role="status">
+          {reloading ? (
+            <>
+              <Loader2 size={14} className="spin" aria-hidden="true" />
+              <span>Reloading session…</span>
+            </>
+          ) : (
+            <>
+              <AlertCircle size={14} aria-hidden="true" />
+              <span>Conversation updated outside this session</span>
+              <button
+                type="button"
+                className="external-banner-btn"
+                onClick={handleReload}
+                aria-label="Reload to sync"
+              >
+                <RefreshCw size={12} aria-hidden="true" />
+                Reload
+              </button>
+            </>
+          )}
+        </div>
+      ) : null}
+
       <nav className="tabstrip" aria-label="Session views">
         <NavLink
           end
@@ -83,16 +172,18 @@ export function SessionPage() {
       </nav>
 
       {!session ? (
-        <EmptyState
-          icon={Inbox}
-          title="Session not found"
-          description="The session may have ended. Start a new one from the picker."
-          action={
-            <Link className="btn primary" to="/">
-              Back to start
-            </Link>
-          }
-        />
+        reloading ? null : (
+          <EmptyState
+            icon={Inbox}
+            title="Session not found"
+            description="The session may have ended. Start a new one from the picker."
+            action={
+              <Link className="btn primary" to="/">
+                Back to start
+              </Link>
+            }
+          />
+        )
       ) : (
         <Outlet context={{ session, onKill: handleKill }} />
       )}

@@ -18,6 +18,12 @@ export interface SessionInfo {
   title?: string;
   /** Bound Claude Code conversation id, if known. */
   conversationId?: string;
+  /**
+   * True when the conversation JSONL has grown from outside this PTY (e.g.
+   * another `claude` process is appending to the same conversation). The
+   * terminal here can't show those changes until the session is reloaded.
+   */
+  externallyUpdated?: boolean;
 }
 
 export type CreateMode =

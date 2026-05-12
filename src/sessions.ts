@@ -1,9 +1,12 @@
 import { spawn, type IPty } from "node-pty";
 import { randomBytes } from "node:crypto";
 import { basename } from "node:path";
+import { stat } from "node:fs/promises";
+import { join } from "node:path";
 import {
   listConversationFiles,
   mostRecentConversationId,
+  projectsDirFor,
   readFirstUserMessage,
 } from "./claudeProjects.ts";
 import { detectPrompt } from "./prompts.ts";
@@ -48,6 +51,13 @@ interface Session {
   title?: string;
   promptIdleTimer: ReturnType<typeof setTimeout> | null;
   lastPromptNotifyAt: number;
+  /** Last-observed conversation JSONL size that matched our PTY's view. */
+  knownConvLogSize: number;
+  /** Time when our PTY last emitted data — used to attribute log growth. */
+  lastPtyDataAt: number;
+  /** Pending settle timer that records the JSONL size after PTY output flushes. */
+  convSizeSettleTimer: ReturnType<typeof setTimeout> | null;
+  externallyUpdated: boolean;
 }
 
 const TITLE_REFRESH_MS = 3000;
@@ -97,6 +107,10 @@ export class SessionManager {
         clearTimeout(s.promptIdleTimer);
         s.promptIdleTimer = null;
       }
+      if (s.convSizeSettleTimer) {
+        clearTimeout(s.convSizeSettleTimer);
+        s.convSizeSettleTimer = null;
+      }
     }
   }
 
@@ -125,24 +139,76 @@ export class SessionManager {
     }, PROMPT_IDLE_MS);
   }
 
-  /** Resolve conversationId + title for any session missing them. Broadcasts on change. */
+  /** Resolve conversationId + title for any session missing them, and check for
+   *  external writes to the conversation log. Broadcasts on change. */
   private async refreshTitles() {
     let changed = false;
     for (const s of this.sessions.values()) {
-      if (s.title) continue;
       if (!s.conversationId) {
         const files = await listConversationFiles(s.cwd);
         const fresh = files.find((f) => !s.preexistingConvFiles.has(f));
-        if (!fresh) continue;
-        s.conversationId = fresh.replace(/\.jsonl$/, "");
+        if (fresh) {
+          s.conversationId = fresh.replace(/\.jsonl$/, "");
+        }
       }
-      const title = await readFirstUserMessage(s.cwd, s.conversationId);
-      if (title) {
-        s.title = title;
-        changed = true;
+      if (!s.conversationId) continue;
+      if (!s.title) {
+        const title = await readFirstUserMessage(s.cwd, s.conversationId);
+        if (title) {
+          s.title = title;
+          changed = true;
+        }
       }
+      if (await this.checkExternalGrowth(s)) changed = true;
     }
     if (changed) this.broadcastSessions();
+  }
+
+  /**
+   * Compare the conversation JSONL size on disk vs the size we recorded after
+   * our PTY last emitted output. Growth that arrives while our PTY has been
+   * quiet for QUIET_MS is treated as an external `claude` process appending to
+   * the same conversation — the user's terminal here can't show those changes
+   * without a restart.
+   */
+  private async checkExternalGrowth(s: Session): Promise<boolean> {
+    if (!s.conversationId) return false;
+    const QUIET_MS = 2500;
+    const size = await readConvLogSize(s.cwd, s.conversationId);
+    if (s.knownConvLogSize === 0) {
+      s.knownConvLogSize = size;
+      return false;
+    }
+    // If our PTY just emitted output, growth is almost certainly our own; the
+    // settle-timer will update knownConvLogSize shortly. Skip this round.
+    if (Date.now() - s.lastPtyDataAt < QUIET_MS) return false;
+    if (size <= s.knownConvLogSize) {
+      // The log shrunk or rotated — treat as a fresh baseline.
+      if (size !== s.knownConvLogSize) s.knownConvLogSize = size;
+      return false;
+    }
+    if (!s.externallyUpdated) {
+      s.externallyUpdated = true;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Debounce a JSONL-size snapshot after PTY output stops, so growth that
+   * actually came from this PTY doesn't get attributed to an external writer.
+   */
+  private scheduleConvSizeSnapshot(s: Session) {
+    if (!s.conversationId) return;
+    if (s.convSizeSettleTimer) clearTimeout(s.convSizeSettleTimer);
+    s.convSizeSettleTimer = setTimeout(() => {
+      s.convSizeSettleTimer = null;
+      if (s.ended || !s.conversationId) return;
+      void readConvLogSize(s.cwd, s.conversationId).then((size) => {
+        if (s.ended) return;
+        if (size > s.knownConvLogSize) s.knownConvLogSize = size;
+      });
+    }, 1500);
   }
 
   /** Subscribe to session-list updates. Returns an unsubscribe fn. */
@@ -167,6 +233,7 @@ export class SessionManager {
       viewers: s.viewers.size,
       title: s.title,
       conversationId: s.conversationId,
+      externallyUpdated: s.externallyUpdated || undefined,
     };
   }
 
@@ -249,7 +316,20 @@ export class SessionManager {
       conversationId: knownConvId ?? undefined,
       promptIdleTimer: null,
       lastPromptNotifyAt: 0,
+      knownConvLogSize: 0,
+      lastPtyDataAt: 0,
+      convSizeSettleTimer: null,
+      externallyUpdated: false,
     };
+
+    // Seed the known log size if we already know which conversation we're bound to.
+    if (knownConvId) {
+      void readConvLogSize(cwd, knownConvId).then((sz) => {
+        if (!session.ended && session.knownConvLogSize === 0) {
+          session.knownConvLogSize = sz;
+        }
+      });
+    }
 
     // Resolve the title now if we already know the conversation id.
     if (session.conversationId) {
@@ -262,11 +342,14 @@ export class SessionManager {
     }
 
     ptyProc.onData((data) => {
-      session.lastActivityAt = Date.now();
+      const now = Date.now();
+      session.lastActivityAt = now;
+      session.lastPtyDataAt = now;
       session.ringBuffer = appendRing(session.ringBuffer, data);
       const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers.keys()) v.send(msg);
       this.scheduleIdlePromptCheck(session);
+      this.scheduleConvSizeSnapshot(session);
     });
 
     ptyProc.onExit(({ exitCode }) => {
@@ -274,6 +357,10 @@ export class SessionManager {
       if (session.promptIdleTimer) {
         clearTimeout(session.promptIdleTimer);
         session.promptIdleTimer = null;
+      }
+      if (session.convSizeSettleTimer) {
+        clearTimeout(session.convSizeSettleTimer);
+        session.convSizeSettleTimer = null;
       }
       const msg: ServerMessage = { type: "ended", sessionId: id, exitCode: exitCode ?? 0 };
       for (const v of session.viewers.keys()) v.send(msg);
@@ -372,6 +459,15 @@ export function minViewerDims(viewers: Iterable<ViewerDims>): ViewerDims | null 
   }
   if (!any || !Number.isFinite(cols) || !Number.isFinite(rows)) return null;
   return { cols, rows };
+}
+
+async function readConvLogSize(cwd: string, conversationId: string): Promise<number> {
+  try {
+    const s = await stat(join(projectsDirFor(cwd), `${conversationId}.jsonl`));
+    return s.size;
+  } catch {
+    return 0;
+  }
 }
 
 export function appendRing(buf: Buffer, chunk: string): Buffer {
