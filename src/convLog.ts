@@ -3,13 +3,25 @@ import { join } from "node:path";
 import { listConversationFiles, projectsDirFor, readFirstUserMessage } from "./claudeProjects.ts";
 
 const REFRESH_MS = 3000;
-const QUIET_MS = 2500;
-const SETTLE_MS = 1500;
+// JSONL growth while our PTY has been quiet for this long is treated as an
+// external writer. Cosmetic redraws are filtered before they reset the timer.
+const QUIET_MS = 5_000;
+// PTY data chunks smaller than this (after ANSI strip) are treated as
+// cosmetic redraws (status bar refresh, cursor blink) and don't reset the
+// quiet timer.
+const SUBSTANTIVE_BYTES = 80;
+const ANSI_RE = /\x1b\[[0-9;?]*[ -/]*[@-~]/g;
+
+const DEBUG = !!process.env.RVC_DEBUG;
+function dlog(...args: unknown[]): void {
+  if (DEBUG) console.log("[conv-log]", ...args);
+}
+
+export type GrowthKind = "local" | "external";
 
 export interface ConvLogState {
   conversationId?: string;
   title?: string;
-  externallyUpdated: boolean;
 }
 
 interface Entry {
@@ -19,8 +31,6 @@ interface Entry {
   preexistingFiles: Set<string>;
   knownConvLogSize: number;
   lastPtyDataAt: number;
-  settleTimer: ReturnType<typeof setTimeout> | null;
-  externallyUpdated: boolean;
 }
 
 export interface TrackOptions {
@@ -31,12 +41,14 @@ export interface TrackOptions {
 /**
  * Watches the Claude Code conversation JSONL log on disk for each tracked
  * session. Resolves the conversation id for freshly-spawned PTYs, reads the
- * first user message as a title, and detects when an external `claude` process
- * has appended to the same conversation while our PTY was quiet.
+ * first user message as a title, and classifies JSONL growth as either
+ * `local` (our PTY recently wrote substantive output) or `external` (an
+ * outside process appended while our PTY was quiet).
  */
 export class ConversationLogWatcher {
   private entries = new Map<string, Entry>();
   private listeners = new Set<() => void>();
+  private growthListeners = new Set<(id: string, kind: GrowthKind) => void>();
   private refreshTimer: ReturnType<typeof setInterval> | null;
 
   constructor() {
@@ -48,15 +60,18 @@ export class ConversationLogWatcher {
       clearInterval(this.refreshTimer);
       this.refreshTimer = null;
     }
-    for (const e of this.entries.values()) {
-      if (e.settleTimer) clearTimeout(e.settleTimer);
-    }
     this.entries.clear();
   }
 
   onChange(cb: () => void): () => void {
     this.listeners.add(cb);
     return () => this.listeners.delete(cb);
+  }
+
+  /** Fires every time a tracked session's JSONL grows. */
+  onGrowth(cb: (id: string, kind: GrowthKind) => void): () => void {
+    this.growthListeners.add(cb);
+    return () => this.growthListeners.delete(cb);
   }
 
   /** Snapshot existing conversation files so a new one created by an
@@ -72,8 +87,6 @@ export class ConversationLogWatcher {
       preexistingFiles: opts.preexistingFiles,
       knownConvLogSize: 0,
       lastPtyDataAt: 0,
-      settleTimer: null,
-      externallyUpdated: false,
     };
     this.entries.set(id, entry);
     if (entry.conversationId) {
@@ -93,39 +106,39 @@ export class ConversationLogWatcher {
   }
 
   untrack(id: string): void {
-    const e = this.entries.get(id);
-    if (!e) return;
-    if (e.settleTimer) clearTimeout(e.settleTimer);
     this.entries.delete(id);
   }
 
-  /** Note that the PTY for `id` just emitted output. Debounces a size snapshot
-   *  so growth that actually came from our own PTY doesn't get misattributed
-   *  to an external writer. */
-  notePtyOutput(id: string): void {
+  /** Note that the PTY for `id` just emitted output. Cosmetic redraws are
+   *  filtered out — only substantive content updates the quiet timer. */
+  notePtyOutput(id: string, data: string): void {
     const e = this.entries.get(id);
     if (!e) return;
+    const stripped = data.replace(ANSI_RE, "").trim();
+    if (stripped.length < SUBSTANTIVE_BYTES) {
+      dlog(`pty-output cosmetic id=${id} bytes=${stripped.length}`);
+      return;
+    }
     e.lastPtyDataAt = Date.now();
-    if (!e.conversationId) return;
-    if (e.settleTimer) clearTimeout(e.settleTimer);
-    const convId = e.conversationId;
-    e.settleTimer = setTimeout(() => {
-      e.settleTimer = null;
-      void readConvLogSize(e.cwd, convId).then((size) => {
-        if (this.entries.get(id) !== e) return;
-        if (size > e.knownConvLogSize) e.knownConvLogSize = size;
-      });
-    }, SETTLE_MS);
+  }
+
+  /** Reset the size watermark to the current JSONL size — call when a viewer
+   *  attaches so prior growth doesn't immediately re-trip. */
+  async markBaseline(id: string): Promise<void> {
+    const e = this.entries.get(id);
+    if (!e?.conversationId) return;
+    const size = await readConvLogSize(e.cwd, e.conversationId);
+    if (this.entries.get(id) !== e) return;
+    if (size > e.knownConvLogSize) {
+      dlog(`markBaseline id=${id} ${e.knownConvLogSize} -> ${size}`);
+      e.knownConvLogSize = size;
+    }
   }
 
   getState(id: string): ConvLogState | null {
     const e = this.entries.get(id);
     if (!e) return null;
-    return {
-      conversationId: e.conversationId,
-      title: e.title,
-      externallyUpdated: e.externallyUpdated,
-    };
+    return { conversationId: e.conversationId, title: e.title };
   }
 
   /** Return the tracked session id whose live PTY owns this conversation, if any. */
@@ -146,13 +159,12 @@ export class ConversationLogWatcher {
 
   private async refresh(): Promise<void> {
     let changed = false;
-    for (const e of this.entries.values()) {
+    const events: Array<[string, GrowthKind]> = [];
+    for (const [id, e] of this.entries) {
       if (!e.conversationId) {
         const files = await listConversationFiles(e.cwd);
         const fresh = files.find((f) => !e.preexistingFiles.has(f));
-        if (fresh) {
-          e.conversationId = fresh.replace(/\.jsonl$/, "");
-        }
+        if (fresh) e.conversationId = fresh.replace(/\.jsonl$/, "");
       }
       if (!e.conversationId) continue;
       if (!e.title) {
@@ -162,35 +174,23 @@ export class ConversationLogWatcher {
           changed = true;
         }
       }
-      if (await this.checkExternalGrowth(e)) changed = true;
+      const size = await readConvLogSize(e.cwd, e.conversationId);
+      if (e.knownConvLogSize === 0) {
+        e.knownConvLogSize = size;
+      } else if (size > e.knownConvLogSize) {
+        const quietMs = Date.now() - e.lastPtyDataAt;
+        const kind: GrowthKind = quietMs > QUIET_MS ? "external" : "local";
+        dlog(`growth id=${id} ${e.knownConvLogSize} -> ${size} kind=${kind} quietMs=${quietMs}`);
+        e.knownConvLogSize = size;
+        events.push([id, kind]);
+      } else if (size < e.knownConvLogSize) {
+        e.knownConvLogSize = size;
+      }
     }
     if (changed) this.emitChange();
-  }
-
-  /**
-   * Compare the conversation JSONL size on disk vs the size we recorded after
-   * our PTY last emitted output. Growth that arrives while our PTY has been
-   * quiet for QUIET_MS is treated as an external `claude` process appending to
-   * the same conversation — the user's terminal here can't show those changes
-   * without a restart.
-   */
-  private async checkExternalGrowth(e: Entry): Promise<boolean> {
-    if (!e.conversationId) return false;
-    const size = await readConvLogSize(e.cwd, e.conversationId);
-    if (e.knownConvLogSize === 0) {
-      e.knownConvLogSize = size;
-      return false;
+    for (const [id, kind] of events) {
+      for (const l of this.growthListeners) l(id, kind);
     }
-    if (Date.now() - e.lastPtyDataAt < QUIET_MS) return false;
-    if (size <= e.knownConvLogSize) {
-      if (size !== e.knownConvLogSize) e.knownConvLogSize = size;
-      return false;
-    }
-    if (!e.externallyUpdated) {
-      e.externallyUpdated = true;
-      return true;
-    }
-    return false;
   }
 }
 

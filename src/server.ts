@@ -36,6 +36,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     idleTimeoutMs: opts.idleTimeoutMs,
     notifier: {
       onPrompt: ({ sessionId, cwdLabel, title, preview }) => {
+        if (process.env.RVC_DEBUG)
+          console.log(
+            `[push] onPrompt id=${sessionId} subscribers=${push.hasSubscribers() ? "yes" : "no"}`
+          );
         if (!push.hasSubscribers()) return;
         void push.send({
           title: title ? `${cwdLabel}: ${title}` : `${cwdLabel} — Claude needs input`,

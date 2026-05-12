@@ -34,6 +34,13 @@ export function ActiveSessionsList({ sessions, activeIds, showCwd = false, fallb
                 {activeIds.has(s.id) ? (
                   <span className="session-activity-dot" aria-label="Active" />
                 ) : null}
+                {s.externallyUpdated ? (
+                  <span
+                    className="session-updated-dot"
+                    aria-label="Conversation updated"
+                    title="Conversation updated"
+                  />
+                ) : null}
               </div>
               {meta ? <div className="row-meta">{meta}</div> : null}
             </div>

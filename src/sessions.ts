@@ -14,7 +14,6 @@ export interface PromptNotifier {
 }
 
 const PROMPT_IDLE_MS = 1500;
-const PROMPT_COOLDOWN_MS = 60_000;
 const PROMPT_TAIL_BYTES = 4096;
 
 export const RING_BUFFER_BYTES = 64 * 1024;
@@ -42,7 +41,7 @@ interface Session {
   viewers: Map<ViewerSink, ViewerDims>;
   ended: boolean;
   promptIdleTimer: ReturnType<typeof setTimeout> | null;
-  lastPromptNotifyAt: number;
+  hasUnseenUpdate: boolean;
 }
 
 export class SessionManager {
@@ -53,6 +52,7 @@ export class SessionManager {
   private notifier: PromptNotifier | null = null;
   private convWatcher = new ConversationLogWatcher();
   private convWatcherUnsub: () => void;
+  private convGrowthUnsub: () => void;
 
   constructor(opts: { command: string; idleTimeoutMs?: number; notifier?: PromptNotifier }) {
     this.command = opts.command;
@@ -73,6 +73,26 @@ export class SessionManager {
       }, 60_000);
     }
     this.convWatcherUnsub = this.convWatcher.onChange(() => this.broadcastSessions());
+    this.convGrowthUnsub = this.convWatcher.onGrowth((id, kind) => {
+      const s = this.sessions.get(id);
+      if (!s || s.ended) return;
+      if (kind === "external") {
+        if (process.env.RVC_DEBUG)
+          console.log(`[sessions] growth id=${id} external -> hasUnseenUpdate=true`);
+        if (!s.hasUnseenUpdate) {
+          s.hasUnseenUpdate = true;
+          this.broadcastSessions();
+        }
+      } else {
+        // local growth: our PTY produced it; attached viewers already see it.
+        if (s.hasUnseenUpdate) {
+          if (process.env.RVC_DEBUG)
+            console.log(`[sessions] growth id=${id} local -> clearing hasUnseenUpdate`);
+          s.hasUnseenUpdate = false;
+          this.broadcastSessions();
+        }
+      }
+    });
   }
 
   close() {
@@ -87,6 +107,7 @@ export class SessionManager {
       }
     }
     this.convWatcherUnsub();
+    this.convGrowthUnsub();
     this.convWatcher.close();
   }
 
@@ -100,12 +121,23 @@ export class SessionManager {
     s.promptIdleTimer = setTimeout(() => {
       s.promptIdleTimer = null;
       if (s.ended) return;
-      const now = Date.now();
-      if (now - s.lastPromptNotifyAt < PROMPT_COOLDOWN_MS) return;
       const tail = s.ringBuffer.subarray(Math.max(0, s.ringBuffer.length - PROMPT_TAIL_BYTES));
-      const result = detectPrompt(tail.toString("utf8"));
+      const tailStr = tail.toString("utf8");
+      const result = detectPrompt(tailStr);
+      if (process.env.RVC_DEBUG) {
+        console.log(
+          `[prompt-detect] id=${s.id} matched=${result.matched} pattern=${result.pattern ?? "-"}`
+        );
+        if (!result.matched) {
+          const clean = tailStr
+            .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "")
+            .replace(/\r(?!\n)/g, "\n");
+          console.log(
+            "[prompt-detect] tail (last 20 lines):\n" + clean.split("\n").slice(-20).join("\n")
+          );
+        }
+      }
       if (!result.matched) return;
-      s.lastPromptNotifyAt = now;
       const conv = this.convWatcher.getState(s.id);
       this.notifier?.onPrompt({
         sessionId: s.id,
@@ -139,7 +171,7 @@ export class SessionManager {
       viewers: s.viewers.size,
       title: conv?.title,
       conversationId: conv?.conversationId,
-      externallyUpdated: conv?.externallyUpdated || undefined,
+      externallyUpdated: s.hasUnseenUpdate || undefined,
     };
   }
 
@@ -220,7 +252,7 @@ export class SessionManager {
       viewers: new Map(),
       ended: false,
       promptIdleTimer: null,
-      lastPromptNotifyAt: 0,
+      hasUnseenUpdate: false,
     };
 
     this.convWatcher.track(id, cwd, { knownConvId, preexistingFiles });
@@ -232,7 +264,7 @@ export class SessionManager {
       const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers.keys()) v.send(msg);
       this.scheduleIdlePromptCheck(session);
-      this.convWatcher.notePtyOutput(id);
+      this.convWatcher.notePtyOutput(id, data);
     });
 
     ptyProc.onExit(({ exitCode }) => {
@@ -257,6 +289,11 @@ export class SessionManager {
     const s = this.sessions.get(sessionId);
     if (!s) return null;
     s.viewers.set(viewer, { cols: Math.max(20, cols | 0), rows: Math.max(5, rows | 0) });
+    // Advance the JSONL watermark so prior external growth doesn't re-fire,
+    // but keep `hasUnseenUpdate` set so the SessionPage banner can prompt the
+    // user to reload. The flag clears naturally when reload spawns a new
+    // session (and this stale one ends).
+    void this.convWatcher.markBaseline(sessionId);
     this.recomputePtySize(s);
     viewer.send({ type: "attached", sessionId, replay: s.ringBuffer.toString("utf8") });
     this.broadcastSessions();

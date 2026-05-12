@@ -33,6 +33,16 @@ const PROMPT_PATTERNS: Array<{ name: string; test: (text: string) => boolean }> 
     name: "press-to-continue",
     test: (t) => /press\s+(<?[A-Za-z\-+]+>?)\s+to\b/i.test(t),
   },
+  {
+    name: "input-box-idle",
+    // Claude Code's idle prompt — a `❯` line between horizontal-rule borders
+    // with the "?for shortcuts" status line below it. The status line is the
+    // strongest signal since it only renders when Claude is waiting for input.
+    test: (t) => {
+      const tail = t.split("\n").slice(-20).join("\n");
+      return /─{6,}/.test(tail) && /\?\s*for\s*shortcuts/i.test(tail);
+    },
+  },
 ];
 
 export interface PromptDetection {

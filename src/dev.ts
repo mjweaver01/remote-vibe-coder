@@ -1,6 +1,7 @@
 import { execSync, spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
+import { connect } from "node:net";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import qrcode from "qrcode-terminal";
@@ -25,7 +26,31 @@ function tag(label: string, color: string) {
   };
 }
 
-const server = spawn(bin("tsx"), ["watch", "src/cli.ts", "--port", "4311"], {
+const SERVER_PORT = 4311;
+
+function waitForPort(port: number, timeoutMs = 30_000): Promise<void> {
+  const start = Date.now();
+  return new Promise((resolveReady, reject) => {
+    const tryConnect = () => {
+      const sock = connect({ port, host: "127.0.0.1" });
+      sock.once("connect", () => {
+        sock.destroy();
+        resolveReady();
+      });
+      sock.once("error", () => {
+        sock.destroy();
+        if (Date.now() - start > timeoutMs) {
+          reject(new Error(`server did not start on port ${port} within ${timeoutMs}ms`));
+        } else {
+          setTimeout(tryConnect, 200);
+        }
+      });
+    };
+    tryConnect();
+  });
+}
+
+const server = spawn(bin("tsx"), ["watch", "src/cli.ts", "--port", String(SERVER_PORT)], {
   cwd: root,
   env: { ...process.env, RVC_DEV: "1" },
   stdio: ["inherit", "pipe", "pipe"],
@@ -33,12 +58,19 @@ const server = spawn(bin("tsx"), ["watch", "src/cli.ts", "--port", "4311"], {
 server.stdout!.on("data", tag("server", "32"));
 server.stderr!.on("data", tag("server", "32"));
 
-const client = spawn(bin("vite"), ["dev"], {
-  cwd: root,
-  env: { ...process.env },
-});
-client.stdout.on("data", tag("client", "36"));
-client.stderr.on("data", tag("client", "36"));
+let client: ChildProcess | null = null;
+waitForPort(SERVER_PORT).then(
+  () => {
+    client = spawn(bin("vite"), ["dev"], { cwd: root, env: { ...process.env } });
+    client.stdout!.on("data", tag("client", "36"));
+    client.stderr!.on("data", tag("client", "36"));
+  },
+  (err) => {
+    console.error(`[dev] ${err instanceof Error ? err.message : String(err)}`);
+    server.kill("SIGTERM");
+    process.exit(1);
+  }
+);
 
 let duckyProc: ChildProcess | null = null;
 
@@ -93,7 +125,7 @@ for (const sig of ["SIGINT", "SIGTERM"] as NodeJS.Signals[]) {
         duckyProc.kill("SIGINT");
       } catch {}
     }
-    client.kill(sig);
+    client?.kill(sig);
     server.kill(sig);
     process.exit(0);
   });

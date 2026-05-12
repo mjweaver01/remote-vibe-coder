@@ -93,7 +93,15 @@ export class PushService {
 
   /** Fan out to all subscribers; drop dead endpoints (404/410). */
   async send(payload: PushPayload): Promise<void> {
-    if (this.subs.size === 0) return;
+    const debug = !!process.env.RVC_DEBUG;
+    if (this.subs.size === 0) {
+      if (debug) console.log(`[push] send skipped (no subscribers) tag=${payload.tag}`);
+      return;
+    }
+    if (debug)
+      console.log(
+        `[push] send tag=${payload.tag} subs=${this.subs.size} title=${JSON.stringify(payload.title)}`
+      );
     const body = JSON.stringify(payload);
     const dead: string[] = [];
     await Promise.all(
@@ -102,8 +110,13 @@ export class PushService {
           await webpush.sendNotification({ endpoint: rec.endpoint, keys: rec.keys }, body, {
             TTL: 60,
           });
+          if (debug) console.log(`[push]   ok endpoint=${rec.endpoint.slice(0, 60)}…`);
         } catch (err) {
           const status = (err as { statusCode?: number }).statusCode;
+          if (debug)
+            console.log(
+              `[push]   FAIL status=${status} endpoint=${rec.endpoint.slice(0, 60)}… err=${(err as Error).message}`
+            );
           if (status === 404 || status === 410) dead.push(rec.endpoint);
         }
       })

@@ -13,7 +13,9 @@
   ],
   "scripts": {
     "dev": "tsx src/dev.ts",
+    "dev:debug": "RVC_DEBUG=1 tsx src/dev.ts",
     "dev:https": "tsx src/dev.ts --https",
+    "dev:https:debug": "RVC_DEBUG=1 tsx src/dev.ts --https",
     "prod:https": "npm run build && node dist/cli.js --root ~/Websites --https",
     "test": "vitest run",
     "test:watch": "vitest",

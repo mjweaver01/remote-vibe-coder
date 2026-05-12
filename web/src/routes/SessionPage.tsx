@@ -12,6 +12,7 @@ import {
   Trash2,
 } from "../components/icons.ts";
 import { EmptyState } from "../components/EmptyState.tsx";
+import { HeaderActions } from "../components/HeaderActions.tsx";
 import { IconButton } from "../components/IconButton.tsx";
 import { Topbar } from "../components/Topbar.tsx";
 import { useSession } from "../hooks/useSessions.ts";
@@ -93,6 +94,18 @@ export function SessionPage() {
     });
   };
 
+  // Auto-reload once on navigation if the session is already outdated. Only
+  // fires for the first observation of each sessionId — subsequent flips of
+  // `externallyUpdated` while on the page surface the banner instead.
+  const autoReloadedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (autoReloadedFor.current === sessionId) return;
+    if (!session) return;
+    autoReloadedFor.current = sessionId ?? null;
+    if (session.externallyUpdated && session.conversationId) handleReload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, sessionId]);
+
   const showExternalBanner = !!(session?.externallyUpdated && session.conversationId) || reloading;
 
   return (
@@ -117,12 +130,16 @@ export function SessionPage() {
           )
         }
         trailing={
-          <IconButton
-            icon={Trash2}
-            label="Kill session"
-            tone="danger"
-            size="sm"
-            onClick={handleKill}
+          <HeaderActions
+            before={
+              <IconButton
+                icon={Trash2}
+                label="Kill session"
+                tone="danger"
+                size="sm"
+                onClick={handleKill}
+              />
+            }
           />
         }
       />

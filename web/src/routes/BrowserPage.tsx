@@ -13,10 +13,7 @@ import {
 import { ActiveSessionsList } from "../components/ActiveSessionsList.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { LoadingState } from "../components/LoadingState.tsx";
-import { GithubLink } from "../components/GithubLink.tsx";
-import { NotificationsToggle } from "../components/NotificationsToggle.tsx";
-import { PairDeviceButton } from "../components/PairDevice.tsx";
-import { ThemeToggle } from "../components/ThemeToggle.tsx";
+import { HeaderActions } from "../components/HeaderActions.tsx";
 import { Topbar } from "../components/Topbar.tsx";
 import { useAsync } from "../hooks/useAsync.ts";
 import { useSessions } from "../hooks/useSessions.ts";
@@ -70,14 +67,7 @@ export function BrowserPage() {
         leading={<AudioWaveform size={28} color="var(--accent)" aria-hidden="true" />}
         title="remote-vibe-coder"
         subtitle={data ? data.cwdLabel : (path ?? "")}
-        trailing={
-          <>
-            <NotificationsToggle />
-            <ThemeToggle />
-            <GithubLink />
-            <PairDeviceButton />
-          </>
-        }
+        trailing={<HeaderActions />}
       />
       <div className="page-body">
         {loading && !data ? <LoadingState label="Reading folder…" /> : null}

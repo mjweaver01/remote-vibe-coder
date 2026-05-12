@@ -127,6 +127,34 @@
   color: var(--text-dim);
   margin-right: 14px;
 }
+.session-activity-dot,
+.session-updated-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.session-activity-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 0 var(--success-soft);
+  animation: session-pulse 1.6s ease-out infinite;
+}
+.session-updated-dot {
+  background: var(--accent);
+}
+@keyframes session-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--success-soft);
+  }
+  70% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
 
 /* ----- Folder row (browser homepage) ----- */
 .row-folder {

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { ArrowLeft, ChevronRight, History, Inbox, Plus, RotateCcw } from "../components/icons.ts";
 import { ActiveSessionsList } from "../components/ActiveSessionsList.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
+import { HeaderActions } from "../components/HeaderActions.tsx";
 import { LoadingState } from "../components/LoadingState.tsx";
 import { Topbar } from "../components/Topbar.tsx";
 import { IconButton } from "../components/IconButton.tsx";
@@ -80,6 +81,7 @@ export function PickerPage() {
         }
         title={folderName}
         subtitle={cwd}
+        trailing={<HeaderActions />}
       />
 
       <div className="page-body">
