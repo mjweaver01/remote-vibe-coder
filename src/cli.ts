@@ -260,6 +260,17 @@ async function main() {
     process.exit(1);
   }
 
+  // node-pty's posix_spawnp doesn't always resolve PATH the same way Node's
+  // child_process does (notably for binaries in ~/.local/bin under some shells),
+  // so resolve the command to an absolute path once here and hand that to PTY.
+  if (!flags.command.includes("/")) {
+    const which = spawnSync("which", [flags.command], { encoding: "utf8" });
+    const resolved = which.stdout?.trim();
+    if (resolved && existsSync(resolved)) {
+      flags.command = resolved;
+    }
+  }
+
   if (!existsSync(flags.root)) {
     console.error(`error: --root directory does not exist: ${flags.root}`);
     process.exit(1);
