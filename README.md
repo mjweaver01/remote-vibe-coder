@@ -8,9 +8,7 @@ Orchestrate Claude Code from anywhere.
 
 ## What is RVC?
 
-A tiny local web server that wraps the real `claude` CLI in a PTY and renders it in your browser. Folder picker, conversation history, Monaco-powered file viewer with diff + commit, and voice transcription.
-
-Start a session on your laptop, finish on your phone. Vibe out from any device with a browser.
+A tiny local web server that wraps the `claude` CLI in a PTY and renders it in your browser. Vibe code, review diffs, commit, and ship remotely.
 
 ## Quick start
 
