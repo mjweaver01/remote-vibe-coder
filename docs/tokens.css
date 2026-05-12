@@ -1,7 +1,7 @@
 /* ============================================================================
-   Design tokens — the single source of truth for color, type, spacing, motion.
-   Add new values here before referencing them anywhere else.
-   ========================================================================= */
+Design tokens — the single source of truth for color, type, spacing, motion.
+Add new values here before referencing them anywhere else.
+========================================================================= */
 
 :root {
   /* ─── Surfaces ─────────────────────────────────────────── */
@@ -98,8 +98,8 @@
 
   /* ─── Type ─────────────────────────────────────────────── */
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
-    "Segoe UI", system-ui, sans-serif;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
 
   /* ─── Motion ───────────────────────────────────────────── */
   --t-fast: 80ms;
@@ -127,9 +127,9 @@
 }
 
 /* Light mode — flips chrome surfaces and text only. The Monaco editor,
-   xterm terminal, and gameboy keybar stay dark on purpose: switching
-   them to light would clash with the dark themes those subsystems ship
-   with and hurt readability of code/terminal output. */
+xterm terminal, and gameboy keybar stay dark on purpose: switching
+them to light would clash with the dark themes those subsystems ship
+with and hurt readability of code/terminal output. */
 :root[data-theme="light"] {
   --bg: #f7f7f8;
   --bg-1: #ffffff;

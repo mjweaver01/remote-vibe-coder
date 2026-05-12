@@ -61,10 +61,7 @@ export async function mostRecentConversationId(cwd: string): Promise<string | nu
  * `ai-title` is rewritten as Claude refines its summary; the *last* one in the
  * file is canonical, so we scan from the end.
  */
-export async function readConversationTitle(
-  cwd: string,
-  conversationId: string
-): Promise<string> {
+export async function readConversationTitle(cwd: string, conversationId: string): Promise<string> {
   const filePath = join(projectsDirFor(cwd), `${conversationId}.jsonl`);
   let fh;
   try {
