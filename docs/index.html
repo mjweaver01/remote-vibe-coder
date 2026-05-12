@@ -42,8 +42,8 @@
         </h1>
         <p class="lede">
           A tiny local web server that wraps the real <code>claude</code> CLI in a PTY and renders
-          it in your browser. Start a session on your laptop, walk away, and answer permission
-          prompts from your phone.
+          it in your browser. Review diffs, commit, and ship — all from your phone, over a
+          built-in ngrok tunnel.
         </p>
 
         <div class="cta">
@@ -150,10 +150,10 @@
                 <line x1="8" y1="17" x2="12" y2="17" />
               </svg>
             </div>
-            <h3>Files &amp; diffs</h3>
+            <h3>Files, diffs &amp; commits</h3>
             <p>
-              Monaco-powered viewer with git diff vs HEAD. Stage, unstage, and commit from the
-              browser without leaving the page.
+              Monaco-powered viewer with git diff vs HEAD. Stage, unstage, and
+              <strong>commit straight from the browser</strong> — no terminal trip required.
             </p>
           </div>
 
@@ -185,6 +185,33 @@
               services.
             </p>
           </div>
+
+          <div class="card">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M2 12h4l3-7 6 14 3-7h4" />
+              </svg>
+            </div>
+            <h3>Built-in ngrok tunnel</h3>
+            <p>
+              Add <code>--ngrok</code> and you get a public HTTPS URL with a one-shot token —
+              no separate install, no reverse proxy, no port forwarding.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+                <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+              </svg>
+            </div>
+            <h3>URL-driven state</h3>
+            <p>
+              Every view lives in the URL. Reload, share, or paste a link into another device —
+              you land in exactly the same place.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -195,10 +222,10 @@
         <pre class="block" data-copy><code>npx rvc --root ~/Websites</code></pre>
         <p class="micro">Binds to <code>127.0.0.1</code>. Add <code>--host 0.0.0.0</code> to reach it from your phone on the same Wi-Fi.</p>
 
-        <h3>Over the internet (ngrok HTTPS tunnel)</h3>
+        <h3>Over the internet (built-in ngrok HTTPS tunnel)</h3>
         <pre class="block" data-copy><code>npx rvc --root ~/Websites --ngrok</code></pre>
         <p class="micro">
-          Needs an authtoken from
+          ngrok is bundled — no separate install. Just bring an authtoken from
           <a href="https://dashboard.ngrok.com" target="_blank" rel="noopener">ngrok</a>. The URL
           carries a one-shot token stored in <code>sessionStorage</code>.
         </p>

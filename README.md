@@ -50,6 +50,7 @@ A QR code is printed on startup. Scan it — the URL carries a one-shot token st
 - **Files panel**: file tree + Monaco editor + git diff vs HEAD.
 - **Git commits from the browser**: stage/unstage and commit without leaving the page.
 - **Voice input**: mic button on the keybar, native Web Speech API.
+- **Built-in ngrok tunnel**: `--ngrok` gives you a public HTTPS URL with a one-shot token — no separate install, no reverse proxy, no port forwarding. Bring your own authtoken.
 - **Folder favorites + filter**: star folders and filter the browser list.
 - **URL-driven state**: every view is in the URL — reload restores it exactly.
 - **Mobile-first keybar**: 1/2/3 (yes/no/other), arrows, Esc, Tab, Ctrl+C, soft-keyboard summon.
