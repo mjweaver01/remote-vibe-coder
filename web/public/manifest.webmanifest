@@ -1,7 +1,7 @@
 {
   "name": "Remote Vibe Coder",
   "short_name": "Vibe Coder",
-  "description": "Run Claude Code remotely from any device on your network.",
+  "description": "Run Claude Code remotely from any device.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

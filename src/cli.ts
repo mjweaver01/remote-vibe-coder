@@ -53,7 +53,9 @@ function parseArgs(argv: string[]): Flags {
         const portStr = next(a);
         const port = Number(portStr);
         if (!Number.isInteger(port) || port < 1 || port > 65535) {
-          console.error(`error: invalid port "${portStr}" — must be an integer between 1 and 65535`);
+          console.error(
+            `error: invalid port "${portStr}" — must be an integer between 1 and 65535`
+          );
           process.exit(2);
         }
         flags.port = port;
@@ -115,7 +117,10 @@ function parseArgs(argv: string[]): Flags {
     }
   }
 
-  if (!tokenFlagSeen && (flags.ngrok || (flags.host !== "127.0.0.1" && flags.host !== "localhost"))) {
+  if (
+    !tokenFlagSeen &&
+    (flags.ngrok || (flags.host !== "127.0.0.1" && flags.host !== "localhost"))
+  ) {
     flags.token = generateToken();
   }
 
@@ -142,7 +147,6 @@ Options:
 `);
 }
 
-
 function lanAddresses(): string[] {
   const out: string[] = [];
   const ifs = networkInterfaces();
@@ -156,11 +160,7 @@ function lanAddresses(): string[] {
 
 function locateStaticDir(): string {
   const here = dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    resolve(here, "web"),
-    resolve(here, "../dist/web"),
-    resolve(here, "../web"),
-  ];
+  const candidates = [resolve(here, "web"), resolve(here, "../dist/web"), resolve(here, "../web")];
   for (const c of candidates) {
     if (existsSync(join(c, "assets", "app.js"))) return c;
   }
@@ -211,7 +211,8 @@ async function startNgrok(port: number, authtoken: string, flags: Flags): Promis
   const modName = "@ngrok/ngrok";
   const mod = await import(modName);
   const ngrok = (mod as { default?: unknown }).default ?? mod;
-  const forward = (ngrok as { forward: (opts: Record<string, unknown>) => Promise<NgrokListener> }).forward;
+  const forward = (ngrok as { forward: (opts: Record<string, unknown>) => Promise<NgrokListener> })
+    .forward;
   const opts: Record<string, unknown> = { addr: port, authtoken };
   if (flags.ngrokDomain) opts.domain = flags.ngrokDomain;
   return forward(opts);
@@ -277,7 +278,9 @@ async function main() {
       ngrokListener = await startNgrok(flags.port, ngrokAuthtoken, flags);
       publicUrl = ngrokListener.url();
     } catch (err) {
-      console.error(`error: failed to start ngrok tunnel: ${err instanceof Error ? err.message : String(err)}`);
+      console.error(
+        `error: failed to start ngrok tunnel: ${err instanceof Error ? err.message : String(err)}`
+      );
       await server.close();
       process.exit(1);
     }
@@ -290,13 +293,13 @@ async function main() {
   const yellow = "\x1b[33m";
 
   if (process.env.RVC_DEV) {
-    console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
+    console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere`);
     console.log(`${dim}api${reset}  http://${flags.host}:${flags.port}`);
     return;
   }
 
   console.log("");
-  console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere on your network`);
+  console.log(`${bold}${cyan}remote-vibe-coder${reset} — Claude Code, anywhere`);
   console.log(`${dim}root:${reset}  ${flags.root}`);
   console.log(`${dim}host:${reset}  ${flags.host}:${flags.port}`);
   if (publicUrl) {
