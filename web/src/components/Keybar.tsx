@@ -11,6 +11,8 @@ import {
 
 export type KeySend = (data: string) => void;
 
+const SLASH_COMMANDS = ["/btw", "/clear", "/compact", "/context", "/model", "/plan"] as const;
+
 interface Props {
   onSend: KeySend;
   onKill?: () => void;
@@ -57,25 +59,38 @@ export function Keybar({ onSend, onKill, voiceSlot }: Props) {
         </button>
       </div>
 
+      {/* Common slash commands — tablet+ only, injects text without submitting */}
+      <div className="gb-commands" aria-label="Common commands">
+        {SLASH_COMMANDS.map((cmd) => (
+          <button
+            key={cmd}
+            className="gb-cmd-btn"
+            onClick={() => onSend(`${cmd} `)}
+            title={`Insert ${cmd}`}
+            aria-label={`Insert ${cmd}`}
+          >
+            {cmd}
+          </button>
+        ))}
+      </div>
+
       {/* Right — numeric diamond: 1 top · 2 left · 3 right · 4 bottom */}
       <div className="gb-diamond">
         <button
           className="gb-diamond-btn gb-btn-1"
           onClick={() => onSend("1")}
-          title="Option 1 (yes)"
+          title="Option 1"
           aria-label="Option 1"
         >
           <span className="gb-diamond-num">1</span>
-          <span className="gb-diamond-cap">yes</span>
         </button>
         <button
           className="gb-diamond-btn gb-btn-2"
           onClick={() => onSend("2")}
-          title="Option 2 (no)"
+          title="Option 2"
           aria-label="Option 2"
         >
           <span className="gb-diamond-num">2</span>
-          <span className="gb-diamond-cap">no</span>
         </button>
         <div className="gb-diamond-hub" aria-hidden="true" />
         <button
