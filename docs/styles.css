@@ -18,7 +18,8 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 14px;
-  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --max: 880px;
 }
@@ -31,21 +32,57 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
+html {
+  background: var(--bg);
+}
+
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 600px at 50% -10%, rgba(255, 138, 76, 0.08), transparent 60%),
-    radial-gradient(800px 400px at 90% 10%, rgba(255, 138, 76, 0.04), transparent 60%),
-    var(--bg);
+  background: transparent;
   display: flex;
   flex-direction: column;
+  position: relative;
+}
+
+#bg {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+  filter: saturate(1.1) contrast(1.04);
+}
+
+/* Soft cool vignette — lets the holographic background carry the page */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    120% 90% at 50% 40%,
+    transparent 0%,
+    rgba(8, 6, 22, 0.45) 75%,
+    rgba(6, 4, 18, 0.75) 100%
+  );
+}
+
+/* All content sits above the canvas + vignette */
+.topbar,
+main,
+footer,
+.toast {
+  position: relative;
+  z-index: 1;
 }
 
 code {
@@ -78,9 +115,9 @@ a:hover {
   justify-content: space-between;
   padding: 14px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(10, 10, 10, 0.7);
-  backdrop-filter: saturate(140%) blur(10px);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  background: rgba(12, 10, 24, 0.45);
+  backdrop-filter: saturate(140%) blur(18px);
+  -webkit-backdrop-filter: saturate(140%) blur(18px);
 }
 
 .brand {
@@ -181,7 +218,9 @@ section + section {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  background: var(--bg-2);
+  background: rgba(22, 22, 26, 0.72);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: 12px 14px 12px 16px;
@@ -189,7 +228,10 @@ section + section {
   font-size: 14.5px;
   color: var(--text);
   cursor: pointer;
-  transition: border-color 120ms ease, box-shadow 120ms ease, transform 80ms ease;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 80ms ease;
 }
 
 .install:hover {
@@ -226,7 +268,9 @@ section + section {
   border: 1px solid var(--border-strong);
   background: var(--bg-2);
   color: var(--text);
-  transition: border-color 120ms ease, background 120ms ease;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
 }
 
 .btn:hover {
@@ -247,11 +291,15 @@ section + section {
 /* ───── Terminal frame ───── */
 .frame {
   margin-top: 56px;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-lg);
-  background: #0d0d10;
+  background: rgba(12, 10, 24, 0.55);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
   overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 138, 76, 0.05);
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .frame-bar {
@@ -354,12 +402,14 @@ h2 {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
 }
 
 .card {
   position: relative;
   padding: 28px 26px 26px;
-  background: var(--bg-1);
+  background: rgba(19, 19, 22, 0.72);
   transition: background 200ms ease;
   isolation: isolate;
 }
@@ -368,11 +418,7 @@ h2 {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(
-    420px 220px at 50% 0%,
-    var(--accent-soft),
-    transparent 65%
-  );
+  background: radial-gradient(420px 220px at 50% 0%, var(--accent-soft), transparent 65%);
   opacity: 0;
   transition: opacity 240ms ease;
   pointer-events: none;
@@ -380,7 +426,7 @@ h2 {
 }
 
 .card:hover {
-  background: var(--bg-2);
+  background: rgba(22, 22, 26, 0.85);
 }
 
 .card:hover::before {
@@ -398,7 +444,9 @@ h2 {
   border: 1px solid var(--accent-ring);
   color: var(--accent);
   margin-bottom: 18px;
-  transition: transform 240ms ease, box-shadow 240ms ease;
+  transition:
+    transform 240ms ease,
+    box-shadow 240ms ease;
 }
 
 .card-icon svg {
@@ -449,7 +497,9 @@ h2 {
 .block {
   margin: 0;
   padding: 14px 16px;
-  background: var(--bg-2);
+  background: rgba(22, 22, 26, 0.7);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   font-family: var(--font-mono);
@@ -509,7 +559,9 @@ footer {
   font-size: 13px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 120ms ease, transform 120ms ease;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
   box-shadow: 0 10px 30px rgba(255, 138, 76, 0.35);
 }
 
