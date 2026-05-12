@@ -6,7 +6,17 @@ import {
   mostRecentConversationId,
   readFirstUserMessage,
 } from "./claudeProjects.ts";
+import { detectPrompt } from "./prompts.ts";
 import type { CreateMode, ServerMessage, SessionInfo } from "./types.ts";
+
+/** Optional sink for "Claude appears to be waiting for input" events. */
+export interface PromptNotifier {
+  onPrompt(info: { sessionId: string; cwdLabel: string; title?: string; preview: string }): void;
+}
+
+const PROMPT_IDLE_MS = 1500;
+const PROMPT_COOLDOWN_MS = 60_000;
+const PROMPT_TAIL_BYTES = 4096;
 
 export const RING_BUFFER_BYTES = 64 * 1024;
 const RING_SLACK_BYTES = RING_BUFFER_BYTES / 2;
@@ -36,6 +46,8 @@ interface Session {
   preexistingConvFiles: Set<string>;
   conversationId?: string;
   title?: string;
+  promptIdleTimer: ReturnType<typeof setTimeout> | null;
+  lastPromptNotifyAt: number;
 }
 
 const TITLE_REFRESH_MS = 3000;
@@ -46,9 +58,11 @@ export class SessionManager {
   private command: string;
   private idleTimer: ReturnType<typeof setInterval> | null = null;
   private titleTimer: ReturnType<typeof setInterval> | null = null;
+  private notifier: PromptNotifier | null = null;
 
-  constructor(opts: { command: string; idleTimeoutMs?: number }) {
+  constructor(opts: { command: string; idleTimeoutMs?: number; notifier?: PromptNotifier }) {
     this.command = opts.command;
+    this.notifier = opts.notifier ?? null;
     if (opts.idleTimeoutMs) {
       const timeoutMs = opts.idleTimeoutMs;
       this.idleTimer = setInterval(() => {
@@ -78,6 +92,37 @@ export class SessionManager {
       clearInterval(this.titleTimer);
       this.titleTimer = null;
     }
+    for (const s of this.sessions.values()) {
+      if (s.promptIdleTimer) {
+        clearTimeout(s.promptIdleTimer);
+        s.promptIdleTimer = null;
+      }
+    }
+  }
+
+  setNotifier(notifier: PromptNotifier | null) {
+    this.notifier = notifier;
+  }
+
+  private scheduleIdlePromptCheck(s: Session) {
+    if (!this.notifier) return;
+    if (s.promptIdleTimer) clearTimeout(s.promptIdleTimer);
+    s.promptIdleTimer = setTimeout(() => {
+      s.promptIdleTimer = null;
+      if (s.ended) return;
+      const now = Date.now();
+      if (now - s.lastPromptNotifyAt < PROMPT_COOLDOWN_MS) return;
+      const tail = s.ringBuffer.subarray(Math.max(0, s.ringBuffer.length - PROMPT_TAIL_BYTES));
+      const result = detectPrompt(tail.toString("utf8"));
+      if (!result.matched) return;
+      s.lastPromptNotifyAt = now;
+      this.notifier?.onPrompt({
+        sessionId: s.id,
+        cwdLabel: s.cwdLabel,
+        title: s.title,
+        preview: result.preview ?? "Claude is waiting for input",
+      });
+    }, PROMPT_IDLE_MS);
   }
 
   /** Resolve conversationId + title for any session missing them. Broadcasts on change. */
@@ -202,6 +247,8 @@ export class SessionManager {
       ended: false,
       preexistingConvFiles,
       conversationId: knownConvId ?? undefined,
+      promptIdleTimer: null,
+      lastPromptNotifyAt: 0,
     };
 
     // Resolve the title now if we already know the conversation id.
@@ -219,10 +266,15 @@ export class SessionManager {
       session.ringBuffer = appendRing(session.ringBuffer, data);
       const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers.keys()) v.send(msg);
+      this.scheduleIdlePromptCheck(session);
     });
 
     ptyProc.onExit(({ exitCode }) => {
       session.ended = true;
+      if (session.promptIdleTimer) {
+        clearTimeout(session.promptIdleTimer);
+        session.promptIdleTimer = null;
+      }
       const msg: ServerMessage = { type: "ended", sessionId: id, exitCode: exitCode ?? 0 };
       for (const v of session.viewers.keys()) v.send(msg);
       this.sessions.delete(id);

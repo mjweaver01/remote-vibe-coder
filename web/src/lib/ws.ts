@@ -32,6 +32,18 @@ export class WsClient {
     this.connect();
   }
 
+  /** Manual reconnect from the UI after the client has been declared dead. */
+  retry() {
+    if (this.destroyed) return;
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    this.retryDelay = MIN_RETRY_MS;
+    this.retryCount = 0;
+    this.connect();
+  }
+
   destroy() {
     this.destroyed = true;
     if (this.retryTimer) {

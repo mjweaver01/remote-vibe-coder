@@ -185,16 +185,16 @@
   max-height: 320px;
 }
 
-/* Answer diamond — 1 top · 2 left · 3 right · mic bottom */
+/* Numeric diamond — 1 top · 2 left · 3 right · 4 bottom */
 .gb-diamond {
   width: 100%;
   max-width: 160px;
   margin: 0 auto;
   display: grid;
   grid-template-areas:
-    ". y1 ."
-    "y2 hub y3"
-    ". en .";
+    ". n1 ."
+    "n2 hub n3"
+    ". n4 .";
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: clamp(5px, 1.5vw, 8px);
@@ -234,55 +234,115 @@
   border-radius: 50%;
   margin: 18%;
 }
-.gb-btn-yes {
-  grid-area: y1;
+.gb-btn-1 {
+  grid-area: n1;
   background: var(--success-soft);
   border-color: var(--success-ring);
   color: var(--success);
 }
-.gb-btn-no {
-  grid-area: y2;
+.gb-btn-2 {
+  grid-area: n2;
   background: var(--danger-soft);
   border-color: var(--danger-ring);
   color: var(--danger);
 }
-.gb-btn-other {
-  grid-area: y3;
+.gb-btn-3 {
+  grid-area: n3;
+  background: var(--accent-soft);
+  border-color: var(--accent-ring-strong);
+  color: var(--accent);
+}
+.gb-btn-4 {
+  grid-area: n4;
   background: var(--accent-soft);
   border-color: var(--accent-ring-strong);
   color: var(--accent);
 }
 
-/* Mic in diamond bottom slot — VoiceButton fills the cell */
-.gb-diamond-mic {
-  grid-area: en;
-  display: flex;
-}
-.gb-diamond-mic .keybar-btn {
-  flex: 1;
+/* Directional d-pad — ↑ top · ← left · → right · ↓ bottom */
+.gb-dpad {
+  width: 100%;
+  max-width: 160px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-areas:
+    ". up ."
+    "lt hub rt"
+    ". dn .";
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: clamp(5px, 1.5vw, 8px);
   aspect-ratio: 1;
-  height: auto;
-  padding: 0;
+}
+.gb-dpad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--hub-pad);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: clamp(9px, 2.5vw, 11px);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.gb-dpad-btn:active {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.gb-dpad-up    { grid-area: up; }
+.gb-dpad-left  { grid-area: lt; }
+.gb-dpad-right { grid-area: rt; }
+.gb-dpad-down  { grid-area: dn; }
+.gb-dpad-hub {
+  grid-area: hub;
+  background: var(--hub-bg);
+  border: 1px solid var(--hub-border);
   border-radius: 50%;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-ring-strong);
-  color: var(--accent);
-}
-.gb-diamond-mic .keybar-btn.is-recording {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: var(--editor-text-bright);
-  animation: rvc-pulse 0.8s ease-in-out infinite;
-}
-/* When the AnalyserNode is running, replace the canned pulse with a
-   real-time ring driven by the mic volume (set on --vol per frame). */
-.gb-diamond-mic .keybar-btn.is-recording.has-vol {
-  animation: none;
-  box-shadow: 0 0 0 calc(2px + var(--vol, 0) * 18px) var(--danger-glow);
-  transition: box-shadow 60ms ease-out;
+  margin: 20%;
 }
 
-/* A/B action buttons — Enter + Esc, spans bottom of both columns */
+/* Utility row — Tab · Clear · Kill, spans both columns */
+.gb-utility {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: row;
+  gap: clamp(8px, 3vw, 14px);
+  align-items: center;
+  justify-content: center;
+}
+.gb-util-btn {
+  flex: 0 1 auto;
+  min-width: 56px;
+  height: min(9vw, 34px);
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--hub-pad);
+  border: 1px solid var(--border-strong);
+  color: var(--text-dim);
+  font-size: clamp(10px, 2.5vw, 12px);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+.gb-util-btn:active {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.gb-util-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.gb-util-kill {
+  color: var(--danger);
+  border-color: var(--danger-ring);
+}
+
+/* Action row — Esc · Mic · Enter, spans both columns */
 .gb-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -320,50 +380,30 @@
   letter-spacing: 0.02em;
 }
 
-/* D-pad cross — Up top · Tab left · Kill right · Clear bottom */
-.gb-dpad {
-  width: 100%;
-  max-width: 160px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-areas:
-    ". up ."
-    "tab hub kill"
-    ". clr .";
-  grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: repeat(3, 1fr);
-  gap: clamp(5px, 1.5vw, 8px);
-  aspect-ratio: 1;
-}
-.gb-dpad-btn {
+/* Mic centered in the action row between Esc and Enter */
+.gb-action-mic {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--hub-pad);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  color: var(--text-dim);
-  cursor: pointer;
-  font-size: clamp(9px, 2.5vw, 11px);
-  font-weight: 600;
-  font-family: var(--font-mono);
 }
-.gb-dpad-btn:active {
-  background: var(--bg-3);
-  color: var(--text);
-}
-.gb-dpad-up   { grid-area: up; }
-.gb-dpad-tab  { grid-area: tab; }
-.gb-dpad-kill {
-  grid-area: kill;
-  color: var(--danger);
-  border-color: var(--danger-ring);
-}
-.gb-dpad-clr  { grid-area: clr; }
-.gb-dpad-hub {
-  grid-area: hub;
-  background: var(--hub-bg);
-  border: 1px solid var(--hub-border);
+.gb-action-mic .keybar-btn {
+  width: min(11vw, 42px);
+  height: min(11vw, 42px);
+  min-width: 0;
+  padding: 0;
   border-radius: 50%;
-  margin: 20%;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring-strong);
+  color: var(--accent);
+}
+.gb-action-mic .keybar-btn.is-recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--editor-text-bright);
+  animation: rvc-pulse 0.8s ease-in-out infinite;
+}
+.gb-action-mic .keybar-btn.is-recording.has-vol {
+  animation: none;
+  box-shadow: 0 0 0 calc(2px + var(--vol, 0) * 14px) var(--danger-glow);
+  transition: box-shadow 60ms ease-out;
 }

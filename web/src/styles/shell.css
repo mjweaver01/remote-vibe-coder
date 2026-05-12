@@ -75,10 +75,30 @@
   color: var(--accent);
   border-bottom: 1px solid var(--accent-ring);
 }
-.conn-banner.conn-closed {
+.conn-banner.conn-closed,
+.conn-banner.conn-dead {
   background: var(--danger-soft);
   color: var(--danger);
   border-bottom-color: var(--danger-ring);
+}
+.conn-banner-btn {
+  margin-left: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger);
+  background: transparent;
+  border: 1px solid var(--danger-ring);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.conn-banner-btn:hover {
+  background: var(--danger);
+  color: var(--on-danger);
+  border-color: var(--danger);
 }
 
 /* ----- Tabs (within session page) ----- */

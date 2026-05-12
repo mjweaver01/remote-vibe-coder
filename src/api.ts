@@ -8,12 +8,15 @@ import { gitDiff, listTree, readFileSafe } from "./code.ts";
 import { gitStatus, gitStage, gitUnstage, gitCommit } from "./git.ts";
 import { listFolders } from "./files.ts";
 import { listPastSessions } from "./history.ts";
+import type { PushService } from "./push.ts";
+import type { PushSubscription as WebPushSubscription } from "web-push";
 
 export interface ApiContext {
   root: string;
   token: string | null;
   port: number;
   publicUrl?: string | null;
+  push?: PushService;
 }
 
 const MAX_BODY_BYTES = 1 * 1024 * 1024; // 1 MB
@@ -140,6 +143,44 @@ export function createApiRoutes(ctx: ApiContext): Hono {
     try {
       const { cwd, message } = await c.req.json<{ cwd: string; message: string }>();
       return c.json(await gitCommit(cwd, message, ctx.root));
+    } catch (err) {
+      return c.json({ error: errMessage(err) }, 400);
+    }
+  });
+
+  app.get("/push/vapid-public-key", (c) => {
+    if (!ctx.push) return c.json({ error: "push not available" }, 503);
+    try {
+      return c.json({ publicKey: ctx.push.getPublicKey() });
+    } catch (err) {
+      return c.json({ error: errMessage(err) }, 500);
+    }
+  });
+
+  app.post("/push/subscribe", async (c) => {
+    if (!ctx.push) return c.json({ error: "push not available" }, 503);
+    try {
+      const { subscription, ua } = await c.req.json<{
+        subscription: WebPushSubscription;
+        ua?: string;
+      }>();
+      if (!subscription?.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
+        return c.json({ error: "invalid subscription" }, 400);
+      }
+      await ctx.push.subscribe(subscription, ua);
+      return c.json({ ok: true });
+    } catch (err) {
+      return c.json({ error: errMessage(err) }, 400);
+    }
+  });
+
+  app.post("/push/unsubscribe", async (c) => {
+    if (!ctx.push) return c.json({ error: "push not available" }, 503);
+    try {
+      const { endpoint } = await c.req.json<{ endpoint: string }>();
+      if (!endpoint) return c.json({ error: "missing endpoint" }, 400);
+      await ctx.push.unsubscribe(endpoint);
+      return c.json({ ok: true });
     } catch (err) {
       return c.json({ error: errMessage(err) }, 400);
     }

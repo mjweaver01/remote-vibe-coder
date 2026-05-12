@@ -5,6 +5,7 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { createApiRoutes } from "./api.ts";
 import { SessionManager } from "./sessions.ts";
+import { PushService } from "./push.ts";
 import { attachWebSocket } from "./ws.ts";
 
 export interface ServerOptions {
@@ -24,7 +25,28 @@ export interface RunningServer {
 }
 
 export async function startServer(opts: ServerOptions): Promise<RunningServer> {
-  const sessions = new SessionManager({ command: opts.command, idleTimeoutMs: opts.idleTimeoutMs });
+  const push = new PushService();
+  // Initialize lazily — failure to set up keys must not block the server.
+  push.init().catch((err) => {
+    console.error("push: init failed", err);
+  });
+
+  const sessions = new SessionManager({
+    command: opts.command,
+    idleTimeoutMs: opts.idleTimeoutMs,
+    notifier: {
+      onPrompt: ({ sessionId, cwdLabel, title, preview }) => {
+        if (!push.hasSubscribers()) return;
+        void push.send({
+          title: title ? `${cwdLabel}: ${title}` : `${cwdLabel} — Claude needs input`,
+          body: preview,
+          url: `/s/${sessionId}`,
+          sessionId,
+          tag: `rvc-prompt-${sessionId}`,
+        });
+      },
+    },
+  });
 
   const app = new Hono();
   app.route(
@@ -34,6 +56,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       token: opts.token,
       port: opts.port,
       publicUrl: opts.publicUrl ?? null,
+      push,
     })
   );
   app.use(

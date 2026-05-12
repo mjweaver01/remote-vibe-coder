@@ -1,10 +1,28 @@
 // Token management. The server prints a token on startup when bound to LAN;
-// the user appends it as ?token=… on first load. We snapshot it into
-// sessionStorage and strip it from the visible URL so refreshes work.
+// the user appends it as ?token=… on first load. We persist it to
+// localStorage (so closing the tab doesn't lock you out of the running
+// sessions on the server) and strip it from the visible URL so refreshes
+// work. Use signOut() to clear it.
 
 const STORAGE_KEY = "rvc.token";
+const LEGACY_SESSION_KEY = "rvc.token";
 
 let cached: string | null | undefined;
+
+function readStored(): string | null {
+  try {
+    const v = localStorage.getItem(STORAGE_KEY);
+    if (v) return v;
+    // Migrate older sessionStorage tokens forward so existing tabs keep working.
+    const legacy = sessionStorage.getItem(LEGACY_SESSION_KEY);
+    if (legacy) {
+      localStorage.setItem(STORAGE_KEY, legacy);
+      sessionStorage.removeItem(LEGACY_SESSION_KEY);
+      return legacy;
+    }
+  } catch {}
+  return null;
+}
 
 export function getToken(): string | null {
   if (cached !== undefined) return cached;
@@ -12,7 +30,9 @@ export function getToken(): string | null {
   const url = new URL(window.location.href);
   const fromUrl = url.searchParams.get("token");
   if (fromUrl) {
-    sessionStorage.setItem(STORAGE_KEY, fromUrl);
+    try {
+      localStorage.setItem(STORAGE_KEY, fromUrl);
+    } catch {}
     url.searchParams.delete("token");
     const clean = url.pathname + (url.search ? `?${url.searchParams.toString()}` : "") + url.hash;
     window.history.replaceState({}, "", clean || "/");
@@ -20,8 +40,22 @@ export function getToken(): string | null {
     return fromUrl;
   }
 
-  cached = sessionStorage.getItem(STORAGE_KEY);
+  cached = readStored();
   return cached;
+}
+
+/** Clear the persisted token and reload to the unauthenticated state. */
+export function signOut(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(LEGACY_SESSION_KEY);
+  } catch {}
+  cached = null;
+  window.location.assign("/");
+}
+
+export function hasStoredToken(): boolean {
+  return !!readStored();
 }
 
 /** Append the token (if any) to a URL or path. */

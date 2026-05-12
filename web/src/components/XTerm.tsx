@@ -40,20 +40,38 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
     const container = containerRef.current;
     if (!container) return;
 
+    const readTheme = () => {
+      const root = getComputedStyle(document.documentElement);
+      const v = (name: string, fallback: string) =>
+        (root.getPropertyValue(name).trim() || fallback);
+      return {
+        background: v("--bg-black", "#000000"),
+        foreground: v("--text", "#e9e9ec"),
+        cursor: v("--accent", "#ff8a4c"),
+        cursorAccent: v("--bg-black", "#000000"),
+        selectionBackground: "rgba(255,138,76,0.35)",
+      };
+    };
+
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 13,
       fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-      theme: {
-        background: "#000000",
-        foreground: "#e9e9ec",
-        cursor: "#ff8a4c",
-        cursorAccent: "#000000",
-        selectionBackground: "rgba(255,138,76,0.35)",
-      },
+      theme: readTheme(),
       allowProposedApi: true,
       scrollback: 5000,
     });
+
+    const refreshTheme = () => {
+      term.options.theme = readTheme();
+    };
+    const themeObserver = new MutationObserver(refreshTheme);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    const mql = window.matchMedia("(prefers-color-scheme: light)");
+    mql.addEventListener("change", refreshTheme);
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon());
@@ -190,6 +208,8 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
 
     return () => {
       clearTimeout(fitTimer);
+      themeObserver.disconnect();
+      mql.removeEventListener("change", refreshTheme);
       ro.disconnect();
       cancelMomentum();
       container.removeEventListener("touchstart", onTouchStart, { capture: true });

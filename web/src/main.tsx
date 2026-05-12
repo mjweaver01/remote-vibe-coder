@@ -4,7 +4,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router";
 import { router } from "./router.tsx";
+import { applyStoredThemeEarly } from "./hooks/useTheme.ts";
 
+applyStoredThemeEarly();
 
 const container = document.getElementById("app");
 if (!container) throw new Error("#app element missing from index.html");

@@ -12,6 +12,14 @@ interface Props {
   fileName: string;
 }
 
+function currentMonacoTheme(): string {
+  const root = document.documentElement;
+  const pref = root.getAttribute("data-theme");
+  if (pref === "light") return "vs";
+  if (pref === "dark") return "vs-dark";
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "vs" : "vs-dark";
+}
+
 /**
  * Single-shot Monaco editor wrapper. Internally creates a fresh editor for the
  * `code` path or a DiffEditor for the `diff` path; switching paths disposes the
@@ -56,10 +64,13 @@ export function MonacoCode({ diff, code, fileName }: Props) {
       diffEditorRef.current = null;
       container.innerHTML = "";
 
+      const theme = currentMonacoTheme();
+      monaco.editor.setTheme(theme);
+
       if (diff) {
         const ed = monaco.editor.createDiffEditor(container, {
           readOnly: true,
-          theme: "vs-dark",
+          theme,
           automaticLayout: true,
           renderSideBySide: isWide,
           scrollBeyondLastLine: false,
@@ -79,7 +90,7 @@ export function MonacoCode({ diff, code, fileName }: Props) {
           value: code ?? "",
           language: lang,
           readOnly: true,
-          theme: "vs-dark",
+          theme,
           automaticLayout: true,
           minimap: { enabled: isWide },
           scrollBeyondLastLine: false,
@@ -89,6 +100,24 @@ export function MonacoCode({ diff, code, fileName }: Props) {
         editorRef.current = ed;
         cleanup = () => ed.dispose();
       }
+
+      const refreshTheme = () => monaco.editor.setTheme(currentMonacoTheme());
+      const themeObs = new MutationObserver(refreshTheme);
+      themeObs.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"],
+      });
+      const mql = window.matchMedia("(prefers-color-scheme: light)");
+      mql.addEventListener("change", refreshTheme);
+      const themeCleanup = () => {
+        themeObs.disconnect();
+        mql.removeEventListener("change", refreshTheme);
+      };
+      const innerCleanup = cleanup;
+      cleanup = () => {
+        themeCleanup();
+        innerCleanup?.();
+      };
 
       resizeObs = new ResizeObserver(() => {
         editorRef.current?.layout();

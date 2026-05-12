@@ -6,6 +6,7 @@ async function freshAuth() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   sessionStorage.clear();
   // Reset URL to a clean state
   window.history.replaceState({}, "", "/");
@@ -17,11 +18,11 @@ describe("getToken", () => {
     expect(getToken()).toBeNull();
   });
 
-  it("picks up token from query string and persists to sessionStorage", async () => {
+  it("picks up token from query string and persists to localStorage", async () => {
     window.history.replaceState({}, "", "/foo?token=abc123");
     const { getToken } = await freshAuth();
     expect(getToken()).toBe("abc123");
-    expect(sessionStorage.getItem("rvc.token")).toBe("abc123");
+    expect(localStorage.getItem("rvc.token")).toBe("abc123");
   });
 
   it("strips the token from the visible URL", async () => {
@@ -32,17 +33,25 @@ describe("getToken", () => {
     expect(window.location.search).not.toContain("token");
   });
 
-  it("falls back to sessionStorage on later loads", async () => {
-    sessionStorage.setItem("rvc.token", "stored");
+  it("falls back to localStorage on later loads", async () => {
+    localStorage.setItem("rvc.token", "stored");
     const { getToken } = await freshAuth();
     expect(getToken()).toBe("stored");
   });
 
+  it("migrates a legacy sessionStorage token to localStorage", async () => {
+    sessionStorage.setItem("rvc.token", "legacy");
+    const { getToken } = await freshAuth();
+    expect(getToken()).toBe("legacy");
+    expect(localStorage.getItem("rvc.token")).toBe("legacy");
+    expect(sessionStorage.getItem("rvc.token")).toBeNull();
+  });
+
   it("caches across calls", async () => {
-    sessionStorage.setItem("rvc.token", "stored");
+    localStorage.setItem("rvc.token", "stored");
     const { getToken } = await freshAuth();
     expect(getToken()).toBe("stored");
-    sessionStorage.clear();
+    localStorage.clear();
     // Should still return cached value
     expect(getToken()).toBe("stored");
   });
@@ -55,13 +64,13 @@ describe("withToken", () => {
   });
 
   it("appends token to a path", async () => {
-    sessionStorage.setItem("rvc.token", "T");
+    localStorage.setItem("rvc.token", "T");
     const { withToken } = await freshAuth();
     expect(withToken("/api/folders")).toBe("/api/folders?token=T");
   });
 
   it("merges token into an existing query string", async () => {
-    sessionStorage.setItem("rvc.token", "T");
+    localStorage.setItem("rvc.token", "T");
     const { withToken } = await freshAuth();
     const out = withToken("/api/file?path=/x");
     expect(out).toContain("path=%2Fx");
@@ -69,7 +78,7 @@ describe("withToken", () => {
   });
 
   it("replaces an existing token rather than duplicating it", async () => {
-    sessionStorage.setItem("rvc.token", "NEW");
+    localStorage.setItem("rvc.token", "NEW");
     const { withToken } = await freshAuth();
     const out = withToken("/api/folders?token=OLD");
     expect(out).toBe("/api/folders?token=NEW");
@@ -83,7 +92,7 @@ describe("wsUrl", () => {
   });
 
   it("includes token when present", async () => {
-    sessionStorage.setItem("rvc.token", "T");
+    localStorage.setItem("rvc.token", "T");
     const { wsUrl } = await freshAuth();
     expect(wsUrl("/ws")).toContain("token=T");
   });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { withToken } from "../lib/auth.ts";
+import { hasStoredToken, signOut, withToken } from "../lib/auth.ts";
 import { useAsync } from "../hooks/useAsync.ts";
 import { fetchPairingUrl } from "../lib/api.ts";
 import { QrCode, X } from "./icons.ts";
@@ -57,6 +57,19 @@ function PairDeviceModal({ onClose }: { onClose: () => void }) {
             code, or visit:
           </p>
           <code className="pair-url">{displayUrl}</code>
+          {hasStoredToken() ? (
+            <button
+              type="button"
+              className="pair-signout"
+              onClick={() => {
+                if (window.confirm("Sign out of this device? You'll need to re-pair with a QR or token URL.")) {
+                  signOut();
+                }
+              }}
+            >
+              Sign out of this device
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
