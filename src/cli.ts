@@ -3,7 +3,7 @@ import { dirname, resolve, join } from "node:path";
 import { existsSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { networkInterfaces } from "node:os";
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import qrcode from "qrcode-terminal";
 import { startServer } from "./server.ts";
 import { generateToken } from "./auth.ts";
@@ -247,6 +247,17 @@ async function main() {
   if (flags.help) {
     printHelp();
     return;
+  }
+
+  const probe = spawnSync(flags.command, ["--version"], { stdio: "ignore" });
+  if (probe.error && (probe.error as NodeJS.ErrnoException).code === "ENOENT") {
+    console.error(
+      `error: "${flags.command}" was not found on PATH.\n` +
+        `       remote-vibe-coder wraps the Claude Code CLI — install it first:\n` +
+        `         npm install -g @anthropic-ai/claude-code\n` +
+        `       Or pass --command <bin> to point at a different executable.`
+    );
+    process.exit(1);
   }
 
   if (!existsSync(flags.root)) {
