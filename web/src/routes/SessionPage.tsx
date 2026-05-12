@@ -136,7 +136,6 @@ export function SessionPage() {
                 icon={Trash2}
                 label="Kill session"
                 tone="danger"
-                size="sm"
                 onClick={handleKill}
               />
             }
