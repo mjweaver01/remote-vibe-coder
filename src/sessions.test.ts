@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { appendRing, RING_BUFFER_BYTES } from "./sessions.ts";
+import {
+  appendRing,
+  minViewerDims,
+  RING_BUFFER_BYTES,
+  SessionManager,
+  type ViewerSink,
+} from "./sessions.ts";
+import type { ServerMessage, SessionInfo } from "./types.ts";
 
 const empty = Buffer.alloc(0);
 const buf = (s: string) => Buffer.from(s, "utf8");
@@ -42,5 +49,112 @@ describe("appendRing", () => {
     const result = appendRing(empty, chunk);
     expect(result.length).toBeLessThanOrEqual(MAX_RETAINED);
     expect(result.toString("utf8").endsWith("a")).toBe(true);
+  });
+});
+
+describe("minViewerDims", () => {
+  it("returns null for an empty set", () => {
+    expect(minViewerDims([])).toBeNull();
+  });
+
+  it("returns the only viewer's dims", () => {
+    expect(minViewerDims([{ cols: 120, rows: 40 }])).toEqual({ cols: 120, rows: 40 });
+  });
+
+  it("returns the min cols and min rows across viewers", () => {
+    expect(
+      minViewerDims([
+        { cols: 200, rows: 60 },
+        { cols: 40, rows: 24 }, // phone
+        { cols: 120, rows: 50 },
+      ])
+    ).toEqual({ cols: 40, rows: 24 });
+  });
+
+  it("picks min cols and min rows independently", () => {
+    // Smallest cols comes from viewer A, smallest rows from viewer B.
+    expect(
+      minViewerDims([
+        { cols: 40, rows: 80 },
+        { cols: 200, rows: 24 },
+      ])
+    ).toEqual({ cols: 40, rows: 24 });
+  });
+});
+
+describe("SessionManager resize policy", () => {
+  const sink = (): ViewerSink => ({ send() {} });
+
+  function observer(): { sink: ViewerSink; sessions: () => SessionInfo[] } {
+    let last: SessionInfo[] = [];
+    return {
+      sink: {
+        send(m: ServerMessage) {
+          if (m.type === "sessions") last = m.sessions;
+        },
+      },
+      sessions: () => last,
+    };
+  }
+
+  async function withSession(fn: (mgr: SessionManager, id: string, obs: ReturnType<typeof observer>) => Promise<void>) {
+    // `cat` sits idle reading stdin — a real PTY that won't exit on its own.
+    const mgr = new SessionManager({ command: "cat" });
+    const obs = observer();
+    mgr.subscribe(obs.sink);
+    const created = await mgr.create(process.cwd(), 100, 30);
+    try {
+      await fn(mgr, created.id, obs);
+    } finally {
+      mgr.kill(created.id);
+      mgr.close();
+      await new Promise((r) => setTimeout(r, 20));
+    }
+  }
+
+  it("shrinks the PTY to the smallest attached viewer", async () => {
+    await withSession(async (mgr, id, obs) => {
+      const laptop = sink();
+      const phone = sink();
+      mgr.attach(id, laptop, 200, 50);
+      const before = obs.sessions().find((s) => s.id === id)!;
+      expect(before.cols).toBe(200);
+      expect(before.rows).toBe(50);
+
+      mgr.attach(id, phone, 40, 24);
+      const after = obs.sessions().find((s) => s.id === id)!;
+      expect(after.cols).toBe(40);
+      expect(after.rows).toBe(24);
+    });
+  });
+
+  it("grows the PTY back when the smaller viewer detaches", async () => {
+    await withSession(async (mgr, id, obs) => {
+      const laptop = sink();
+      const phone = sink();
+      mgr.attach(id, laptop, 200, 50);
+      mgr.attach(id, phone, 40, 24);
+      expect(obs.sessions().find((s) => s.id === id)!.cols).toBe(40);
+
+      mgr.detach(id, phone);
+      const after = obs.sessions().find((s) => s.id === id)!;
+      expect(after.cols).toBe(200);
+      expect(after.rows).toBe(50);
+    });
+  });
+
+  it("recomputes when an attached viewer resizes", async () => {
+    await withSession(async (mgr, id, obs) => {
+      const laptop = sink();
+      const phone = sink();
+      mgr.attach(id, laptop, 200, 50);
+      mgr.attach(id, phone, 40, 24);
+
+      // Phone rotates — now larger than laptop on cols.
+      mgr.resize(id, phone, 300, 80);
+      const after = obs.sessions().find((s) => s.id === id)!;
+      expect(after.cols).toBe(200); // laptop now smallest on cols
+      expect(after.rows).toBe(50); // laptop still smallest on rows
+    });
   });
 });

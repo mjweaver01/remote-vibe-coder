@@ -15,7 +15,7 @@ export interface ViewerSink {
   send(msg: ServerMessage): void;
 }
 
-interface ViewerDims {
+export interface ViewerDims {
   cols: number;
   rows: number;
 }
@@ -131,19 +131,14 @@ export class SessionManager {
   }
 
   private recomputePtySize(s: Session): void {
-    if (s.ended || s.viewers.size === 0) return;
-    let c = Infinity;
-    let r = Infinity;
-    for (const dims of s.viewers.values()) {
-      if (dims.cols < c) c = dims.cols;
-      if (dims.rows < r) r = dims.rows;
-    }
-    if (!Number.isFinite(c) || !Number.isFinite(r)) return;
-    if (s.cols === c && s.rows === r) return;
-    s.cols = c;
-    s.rows = r;
+    if (s.ended) return;
+    const next = minViewerDims(s.viewers.values());
+    if (!next) return;
+    if (s.cols === next.cols && s.rows === next.rows) return;
+    s.cols = next.cols;
+    s.rows = next.rows;
     try {
-      s.pty.resize(c, r);
+      s.pty.resize(next.cols, next.rows);
     } catch {
       // PTY may have just died
     }
@@ -239,14 +234,10 @@ export class SessionManager {
     return this.toInfo(session);
   }
 
-  attach(sessionId: string, viewer: ViewerSink, cols?: number, rows?: number): SessionInfo | null {
+  attach(sessionId: string, viewer: ViewerSink, cols: number, rows: number): SessionInfo | null {
     const s = this.sessions.get(sessionId);
     if (!s) return null;
-    const dims: ViewerDims = {
-      cols: cols !== undefined ? Math.max(20, cols | 0) : s.cols,
-      rows: rows !== undefined ? Math.max(5, rows | 0) : s.rows,
-    };
-    s.viewers.set(viewer, dims);
+    s.viewers.set(viewer, { cols: Math.max(20, cols | 0), rows: Math.max(5, rows | 0) });
     this.recomputePtySize(s);
     viewer.send({ type: "attached", sessionId, replay: s.ringBuffer.toString("utf8") });
     this.broadcastSessions();
@@ -316,6 +307,19 @@ export class SessionManager {
 
 function labelFor(cwd: string): string {
   return basename(cwd) || cwd;
+}
+
+export function minViewerDims(viewers: Iterable<ViewerDims>): ViewerDims | null {
+  let cols = Infinity;
+  let rows = Infinity;
+  let any = false;
+  for (const v of viewers) {
+    any = true;
+    if (v.cols < cols) cols = v.cols;
+    if (v.rows < rows) rows = v.rows;
+  }
+  if (!any || !Number.isFinite(cols) || !Number.isFinite(rows)) return null;
+  return { cols, rows };
 }
 
 export function appendRing(buf: Buffer, chunk: string): Buffer {

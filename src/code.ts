@@ -5,6 +5,7 @@ import { execFile } from "node:child_process";
 import { readdir, stat } from "node:fs/promises";
 import { resolve, join, sep, relative, basename } from "node:path";
 import { promisify } from "node:util";
+import { findGitRoot } from "./git.ts";
 
 const execFileP = promisify(execFile);
 
@@ -196,13 +197,3 @@ export async function gitDiff(
   return { path: file, original, modified, staged: false, inGit: true, isUntracked };
 }
 
-export async function findGitRoot(start: string): Promise<string | null> {
-  try {
-    const { stdout } = await execFileP("git", ["rev-parse", "--show-toplevel"], {
-      cwd: (await stat(start)).isDirectory() ? start : resolve(start, ".."),
-    });
-    return stdout.trim() || null;
-  } catch {
-    return null;
-  }
-}

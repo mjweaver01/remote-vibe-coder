@@ -1,9 +1,20 @@
 import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
+import { stat } from "node:fs/promises";
 import { promisify } from "node:util";
-import { findGitRoot } from "./code.ts";
 
 const execFileP = promisify(execFile);
+
+export async function findGitRoot(start: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileP("git", ["rev-parse", "--show-toplevel"], {
+      cwd: (await stat(start)).isDirectory() ? start : resolve(start, ".."),
+    });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
 
 function isPathInside(child: string, parent: string): boolean {
   const c = resolve(child);
