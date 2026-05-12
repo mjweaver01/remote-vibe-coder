@@ -313,42 +313,123 @@ section + section {
 
 /* ───── Features ───── */
 h2 {
-  font-size: clamp(22px, 3vw, 28px);
-  letter-spacing: -0.015em;
-  margin: 0 0 22px;
+  font-size: clamp(28px, 4vw, 40px);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0 0 16px;
+  font-weight: 700;
+}
+
+.section-head {
+  max-width: 600px;
+  margin: 0 0 40px;
+}
+
+.eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+  margin-bottom: 18px;
+}
+
+.section-lede {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .card {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 18px 18px 16px;
+  position: relative;
+  padding: 28px 26px 26px;
   background: var(--bg-1);
-  transition: border-color 120ms ease, transform 120ms ease;
+  transition: background 200ms ease;
+  isolation: isolate;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    420px 220px at 50% 0%,
+    var(--accent-soft),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 240ms ease;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .card:hover {
-  border-color: var(--border-strong);
-  transform: translateY(-1px);
+  background: var(--bg-2);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-ring);
+  color: var(--accent);
+  margin-bottom: 18px;
+  transition: transform 240ms ease, box-shadow 240ms ease;
+}
+
+.card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.card:hover .card-icon {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(255, 138, 76, 0.18);
 }
 
 .card h3 {
-  margin: 0 0 6px;
-  font-size: 15px;
+  margin: 0 0 8px;
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--text);
 }
 
 .card p {
   margin: 0;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--text-dim);
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 22px 20px 20px;
+  }
 }
 
 /* ───── Install section ───── */
