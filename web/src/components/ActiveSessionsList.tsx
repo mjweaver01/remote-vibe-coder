@@ -18,10 +18,11 @@ export function ActiveSessionsList({
   fallback,
 }: Props) {
   if (sessions.length === 0) return null;
+  const sorted = [...sessions].sort((a, b) => b.createdAt - a.createdAt);
   return (
     <section className="rows">
       <div className="rows-title">Active sessions</div>
-      {sessions.map((s) => {
+      {sorted.map((s) => {
         const title = s.title || (fallback ? fallback(s) : s.cwdLabel);
         const meta = [
           showCwd && s.title ? s.cwdLabel : null,
