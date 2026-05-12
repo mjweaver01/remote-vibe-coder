@@ -13,6 +13,11 @@ export function ConnectionBanner() {
           <Loader2 size={14} className="spin" aria-hidden="true" />
           <span>Reconnecting…</span>
         </>
+      ) : status === "unauthorized" ? (
+        <>
+          <AlertCircle size={14} aria-hidden="true" />
+          <span>Invalid or expired token — open the pairing link again</span>
+        </>
       ) : status === "dead" ? (
         <>
           <AlertCircle size={14} aria-hidden="true" />

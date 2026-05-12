@@ -23,7 +23,8 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,css,json}\" \"web/**/*.{ts,tsx,js,css,json}\" \"docs/**/*.{html,css,js}\"",
     "prepublishOnly": "npm run build",
     "build": "tsx src/build.ts",
-    "start": "node dist/cli.js"
+    "start": "node dist/cli.js",
+    "postinstall": "node -e \"try{require('fs').readdirSync(require('path').join(require.resolve('node-pty/package.json'),'..','prebuilds')).forEach(d=>{const p=require('path').join(require.resolve('node-pty/package.json'),'..','prebuilds',d,'spawn-helper');try{require('fs').chmodSync(p,0o755)}catch{}})}catch{}\""
   },
   "engines": {
     "node": ">=25"

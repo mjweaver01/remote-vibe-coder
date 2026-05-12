@@ -3,9 +3,17 @@
 // server.
 
 import type { ClientMessage, ServerMessage, SessionInfo } from "../../../src/types.ts";
-import { wsUrl } from "./auth.ts";
+import { clearToken, wsUrl } from "./auth.ts";
 
-export type WsStatus = "connecting" | "open" | "reconnecting" | "closed" | "dead";
+export type WsStatus =
+  | "connecting"
+  | "open"
+  | "reconnecting"
+  | "closed"
+  | "dead"
+  | "unauthorized";
+
+const WS_CLOSE_UNAUTHORIZED = 4401;
 
 type Listener<T> = (value: T) => void;
 type MessageListener = Listener<ServerMessage>;
@@ -126,12 +134,20 @@ export class WsClient {
       for (const fn of this.messageListeners) fn(msg);
     });
 
-    const closeOrError = () => {
+    socket.addEventListener("close", (ev) => {
+      if (this.socket === socket) this.socket = null;
+      if (ev.code === WS_CLOSE_UNAUTHORIZED) {
+        this.destroyed = true;
+        clearToken();
+        this.setStatus("unauthorized");
+        return;
+      }
+      this.scheduleReconnect();
+    });
+    socket.addEventListener("error", () => {
       if (this.socket === socket) this.socket = null;
       this.scheduleReconnect();
-    };
-    socket.addEventListener("close", closeOrError);
-    socket.addEventListener("error", closeOrError);
+    });
   }
 
   private scheduleReconnect() {

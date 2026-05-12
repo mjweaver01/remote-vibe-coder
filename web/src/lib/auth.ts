@@ -44,13 +44,18 @@ export function getToken(): string | null {
   return cached;
 }
 
-/** Clear the persisted token and reload to the unauthenticated state. */
-export function signOut(): void {
+/** Clear the persisted token without navigating. */
+export function clearToken(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem(LEGACY_SESSION_KEY);
   } catch {}
   cached = null;
+}
+
+/** Clear the persisted token and reload to the unauthenticated state. */
+export function signOut(): void {
+  clearToken();
   window.location.assign("/");
 }
 

@@ -26,12 +26,14 @@ export function attachWebSocket(
       socket.destroy();
       return;
     }
-    if (!tokensMatch(token, url.searchParams.get("token"))) {
-      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-      socket.destroy();
-      return;
-    }
-    wss.handleUpgrade(req, socket, head, (ws) => attachViewer(ws, sessions));
+    const tokenOk = tokensMatch(token, url.searchParams.get("token"));
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      if (!tokenOk) {
+        ws.close(4401, "unauthorized");
+        return;
+      }
+      attachViewer(ws, sessions);
+    });
   });
 
   return {
