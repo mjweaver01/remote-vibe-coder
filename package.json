@@ -13,8 +13,8 @@
   ],
   "scripts": {
     "dev": "tsx src/dev.ts",
-    "dev:ngrok": "tsx src/dev.ts --ngrok",
-    "prod:ngrok": "npm run build && node dist/cli.js --root ~/Websites --ngrok",
+    "dev:https": "tsx src/dev.ts --https",
+    "prod:https": "npm run build && node dist/cli.js --root ~/Websites --https",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
@@ -36,8 +36,8 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@ducky.wtf/cli": "^1.0.16",
     "@hono/node-server": "^2.0.2",
-    "@ngrok/ngrok": "^1.5.0",
     "hono": "^4.12.18",
     "lucide-react": "1.14.0",
     "monaco-editor": "0.55.1",

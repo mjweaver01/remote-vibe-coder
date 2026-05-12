@@ -217,8 +217,8 @@ function buildPairingUrl(req: IncomingMessage, ctx: ApiContext): string {
     ((req.socket as { encrypted?: boolean }).encrypted ? "https" : "http");
   // Only append a port if one was provided (forwarded or in the Host header),
   // or we swapped a loopback host for a LAN IP — otherwise the request came in
-  // on a standard port (80/443 via ngrok or a reverse proxy) and we'd produce
-  // a broken URL like https://foo.ngrok-free.app:4311/.
+  // on a standard port (80/443 via an HTTPS tunnel or a reverse proxy) and
+  // we'd produce a broken URL like https://foo.ducky.wtf:4311/.
   const portStr = forwardedPort ?? hostPort ?? (isLoopbackHost ? String(ctx.port) : null);
   const url = new URL(`${proto}://${reachableHost}${portStr ? `:${portStr}` : ""}/`);
   if (ctx.token) url.searchParams.set("token", ctx.token);

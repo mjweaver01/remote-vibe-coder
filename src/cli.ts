@@ -1,7 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
-import { existsSync, readFileSync, statSync } from "node:fs";
-import { homedir, networkInterfaces, platform } from "node:os";
+import { existsSync, statSync } from "node:fs";
+import { createRequire } from "node:module";
+import { networkInterfaces } from "node:os";
+import { spawn, type ChildProcess } from "node:child_process";
 import qrcode from "qrcode-terminal";
 import { startServer } from "./server.ts";
 import { generateToken } from "./auth.ts";
@@ -15,9 +17,7 @@ interface Flags {
   command: string;
   idleTimeoutMs: number | null;
   domain: string | null;
-  ngrok: boolean;
-  ngrokAuthtoken: string | null;
-  ngrokDomain: string | null;
+  tunnel: boolean;
   help: boolean;
 }
 
@@ -30,9 +30,7 @@ function parseArgs(argv: string[]): Flags {
     command: "claude",
     idleTimeoutMs: null,
     domain: null,
-    ngrok: false,
-    ngrokAuthtoken: null,
-    ngrokDomain: null,
+    tunnel: false,
     help: false,
   };
   let tokenFlagSeen = false;
@@ -94,16 +92,9 @@ function parseArgs(argv: string[]): Flags {
       case "--domain":
         flags.domain = next(a);
         break;
-      case "--ngrok":
-        flags.ngrok = true;
-        break;
-      case "--ngrok-authtoken":
-        flags.ngrokAuthtoken = next(a);
-        flags.ngrok = true;
-        break;
-      case "--ngrok-domain":
-        flags.ngrokDomain = next(a);
-        flags.ngrok = true;
+      case "--https":
+      case "--ducky":
+        flags.tunnel = true;
         break;
       case "--help":
       case "-h":
@@ -119,7 +110,7 @@ function parseArgs(argv: string[]): Flags {
 
   if (
     !tokenFlagSeen &&
-    (flags.ngrok || (flags.host !== "127.0.0.1" && flags.host !== "localhost"))
+    (flags.tunnel || (flags.host !== "127.0.0.1" && flags.host !== "localhost"))
   ) {
     flags.token = generateToken();
   }
@@ -136,13 +127,11 @@ Options:
   -p, --port <n>             Port to listen on (default: 4310)
   -H, --host <addr>          Bind address (default: 127.0.0.1; use 0.0.0.0 for LAN)
   -r, --root <path>          Folder you can browse (default: ~/Websites)
-  -t, --token <str>          Require ?token=… (auto-generated when --ngrok or non-loopback host)
+  -t, --token <str>          Require ?token=… (auto-generated when --https/--ducky or non-loopback host)
       --no-token             Skip token (insecure)
   -c, --command <bin>        Command to run in each session (default: claude)
       --idle-timeout <m>     Kill sessions idle for more than <m> minutes
-      --ngrok                Expose via ngrok tunnel (HTTPS). Auth via NGROK_AUTHTOKEN env or flag.
-      --ngrok-authtoken <t>  ngrok authtoken (overrides NGROK_AUTHTOKEN env). Implies --ngrok.
-      --ngrok-domain <d>     Reserved ngrok domain (e.g. foo.ngrok-free.app). Implies --ngrok.
+      --https, --ducky       Expose via a public HTTPS tunnel (ducky.wtf, anonymous)
   -h, --help                 Show this help
 `);
 }
@@ -169,53 +158,79 @@ function locateStaticDir(): string {
   );
 }
 
-interface NgrokListener {
-  url(): string;
+interface TunnelHandle {
+  url: string;
   close(): Promise<void>;
 }
 
-function ngrokConfigCandidates(): string[] {
-  const home = homedir();
-  const out: string[] = [];
-  if (platform() === "darwin") {
-    out.push(join(home, "Library", "Application Support", "ngrok", "ngrok.yml"));
-  }
-  if (platform() === "win32" && process.env.LOCALAPPDATA) {
-    out.push(join(process.env.LOCALAPPDATA, "ngrok", "ngrok.yml"));
-  }
-  out.push(join(home, ".config", "ngrok", "ngrok.yml"));
-  out.push(join(home, ".ngrok2", "ngrok.yml"));
-  return out;
+function resolveDuckyBin(): string {
+  const require = createRequire(import.meta.url);
+  const pkgPath = require.resolve("@ducky.wtf/cli/package.json");
+  return resolve(dirname(pkgPath), "dist/index.js");
 }
 
-function readNgrokAuthtokenFromConfig(): string | null {
-  for (const path of ngrokConfigCandidates()) {
-    if (!existsSync(path)) continue;
-    try {
-      const text = readFileSync(path, "utf8");
-      // Matches `authtoken: <token>` at top level OR nested under `agent:`.
-      const m = text.match(/^[ \t]*authtoken:[ \t]*["']?([^\s"'#]+)/m);
-      if (m && m[1]) return m[1];
-    } catch {
-      // ignore unreadable file
-    }
-  }
-  return null;
-}
+function startDuckyTunnel(port: number): Promise<TunnelHandle> {
+  return new Promise((resolveTunnel, rejectTunnel) => {
+    const bin = resolveDuckyBin();
+    const proc: ChildProcess = spawn(process.execPath, [bin, "http", String(port)], {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: process.env,
+    });
 
-function resolveNgrokAuthtoken(flags: Flags): string | null {
-  return flags.ngrokAuthtoken ?? process.env.NGROK_AUTHTOKEN ?? readNgrokAuthtokenFromConfig();
-}
+    let settled = false;
+    let buffer = "";
+    const urlRe = /https:\/\/[a-z0-9-]+\.ducky\.wtf/i;
 
-async function startNgrok(port: number, authtoken: string, flags: Flags): Promise<NgrokListener> {
-  const modName = "@ngrok/ngrok";
-  const mod = await import(modName);
-  const ngrok = (mod as { default?: unknown }).default ?? mod;
-  const forward = (ngrok as { forward: (opts: Record<string, unknown>) => Promise<NgrokListener> })
-    .forward;
-  const opts: Record<string, unknown> = { addr: port, authtoken };
-  if (flags.ngrokDomain) opts.domain = flags.ngrokDomain;
-  return forward(opts);
+    const onChunk = (chunk: Buffer) => {
+      if (settled) return;
+      buffer += chunk.toString();
+      const m = buffer.match(urlRe);
+      if (m) {
+        settled = true;
+        resolveTunnel({
+          url: m[0],
+          close: () =>
+            new Promise<void>((done) => {
+              if (proc.exitCode !== null || proc.killed) return done();
+              proc.once("exit", () => done());
+              proc.kill("SIGINT");
+              setTimeout(() => {
+                if (proc.exitCode === null && !proc.killed) proc.kill("SIGKILL");
+              }, 2000);
+            }),
+        });
+      }
+    };
+
+    proc.stdout?.on("data", onChunk);
+    proc.stderr?.on("data", onChunk);
+
+    proc.on("error", (err) => {
+      if (settled) return;
+      settled = true;
+      rejectTunnel(err);
+    });
+
+    proc.on("exit", (code) => {
+      if (settled) return;
+      settled = true;
+      rejectTunnel(
+        new Error(
+          `ducky exited (code ${code}) before producing a tunnel URL. ` +
+            `Output was:\n${buffer.trim() || "(empty)"}`
+        )
+      );
+    });
+
+    setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      try {
+        proc.kill("SIGINT");
+      } catch {}
+      rejectTunnel(new Error("timed out waiting for ducky to print a tunnel URL"));
+    }, 30000);
+  });
 }
 
 async function main() {
@@ -245,23 +260,6 @@ async function main() {
 
   const staticDir = locateStaticDir();
 
-  let ngrokListener: NgrokListener | null = null;
-  let publicUrl: string | null = null;
-  let ngrokAuthtoken: string | null = null;
-  if (flags.ngrok) {
-    ngrokAuthtoken = resolveNgrokAuthtoken(flags);
-    if (!ngrokAuthtoken) {
-      console.error(
-        "error: --ngrok requires an authtoken. Provide one of:\n" +
-          "         --ngrok-authtoken <token>\n" +
-          "         NGROK_AUTHTOKEN env var\n" +
-          "         `ngrok config add-authtoken <token>` (persisted to ngrok.yml)\n" +
-          "       Get one at https://dashboard.ngrok.com/get-started/your-authtoken"
-      );
-      process.exit(2);
-    }
-  }
-
   const server = await startServer({
     port: flags.port,
     host: flags.host,
@@ -273,13 +271,15 @@ async function main() {
     publicUrl: null,
   });
 
-  if (flags.ngrok && ngrokAuthtoken) {
+  let tunnel: TunnelHandle | null = null;
+  let publicUrl: string | null = null;
+  if (flags.tunnel) {
     try {
-      ngrokListener = await startNgrok(flags.port, ngrokAuthtoken, flags);
-      publicUrl = ngrokListener.url();
+      tunnel = await startDuckyTunnel(flags.port);
+      publicUrl = tunnel.url;
     } catch (err) {
       console.error(
-        `error: failed to start ngrok tunnel: ${err instanceof Error ? err.message : String(err)}`
+        `error: failed to start ducky tunnel: ${err instanceof Error ? err.message : String(err)}`
       );
       await server.close();
       process.exit(1);
@@ -303,7 +303,7 @@ async function main() {
   console.log(`${dim}root:${reset}  ${flags.root}`);
   console.log(`${dim}host:${reset}  ${flags.host}:${flags.port}`);
   if (publicUrl) {
-    console.log(`${dim}ngrok:${reset} ${publicUrl}`);
+    console.log(`${dim}https:${reset} ${publicUrl}`);
   }
   console.log("");
 
@@ -346,9 +346,9 @@ async function main() {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`\n${dim}received ${sig}, shutting down…${reset}`);
-    if (ngrokListener) {
+    if (tunnel) {
       try {
-        await ngrokListener.close();
+        await tunnel.close();
       } catch {}
     }
     await server.close();

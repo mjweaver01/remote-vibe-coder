@@ -401,7 +401,7 @@ The total CSS is ~1300 lines. Tailwind's overhead (PostCSS, JIT, purge config) i
 - **Session list is in-memory.** Server restart clears all sessions. There is no persistence layer.
 - **Token in `sessionStorage`.** The one-shot token from the QR URL is stored in `sessionStorage` after the first load — never `localStorage`. It clears when the tab closes; this is intentional so a shared device doesn't permanently retain the token.
 - **API 404s return JSON, not the SPA.** The API sub-app has its own `app.all("*", → 404 JSON)` catch-all (`src/api.ts`) so mistyped `/api/*` paths return JSON. Only non-`/api/*` unknown paths fall through to `index.html` for React Router.
-- **ngrok and the token.** When `--ngrok` is set (or host is non-loopback) and `--token` was not explicitly passed, a token is auto-generated. Use `--no-token` to opt out (insecure on a public URL).
+- **HTTPS tunnel and the token.** When `--https`/`--ducky` is set (or host is non-loopback) and `--token` was not explicitly passed, a token is auto-generated. Use `--no-token` to opt out (insecure on a public URL). The tunnel is provided by [@ducky.wtf/cli](https://www.npmjs.com/package/@ducky.wtf/cli) (a regular dependency). Its bin (`dist/index.js`) is resolved via `createRequire(import.meta.url).resolve("@ducky.wtf/cli/package.json")` and spawned with `process.execPath`; the public URL is parsed from stdout. No auth token is needed — ducky issues a fresh anonymous subdomain per run.
 
 ---
 
@@ -427,4 +427,4 @@ Do not add these without explicit discussion:
 - **A custom permission UI.** Claude Code's TUI permission prompts are answered via the terminal — that's the point. The 1/2/3 keybar buttons exist precisely for this.
 - **Abstracting the CSS into a component library or Tailwind.** The current approach is intentional.
 
-HTTPS is now supported via `--ngrok` (see `src/cli.ts`). Session persistence across server restarts is still in-memory only — sessions are cleared on restart.
+HTTPS is now supported via `--https` / `--ducky` (see `src/cli.ts`). Session persistence across server restarts is still in-memory only — sessions are cleared on restart.
