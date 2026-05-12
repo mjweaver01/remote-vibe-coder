@@ -1,15 +1,16 @@
 import "@testing-library/jest-dom/vitest";
 
-// Node 25 ships a built-in `localStorage` that shadows jsdom's window.localStorage
-// at the globalThis level. Without `--localstorage-file`, Node's stub is missing
-// methods like `.clear()`, breaking tests. Re-pin the globals to jsdom's storage.
-Object.defineProperty(globalThis, "localStorage", {
-  value: window.localStorage,
-  writable: true,
-  configurable: true,
-});
-Object.defineProperty(globalThis, "sessionStorage", {
-  value: window.sessionStorage,
-  writable: true,
-  configurable: true,
-});
+// Node 25 ships a built-in `localStorage` getter on globalThis (enabled by
+// default via webstorage). Without `--localstorage-file` it throws / returns a
+// stub missing `.clear()`. Delete Node's getter so jsdom's window.localStorage
+// resolves on the global instead.
+for (const key of ["localStorage", "sessionStorage"] as const) {
+  try {
+    delete (globalThis as Record<string, unknown>)[key];
+  } catch {}
+  Object.defineProperty(globalThis, key, {
+    value: window[key],
+    writable: true,
+    configurable: true,
+  });
+}
