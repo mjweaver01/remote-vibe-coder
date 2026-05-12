@@ -1,16 +1,12 @@
 import { spawn, type IPty } from "node-pty";
 import { randomBytes } from "node:crypto";
 import { basename } from "node:path";
-import { stat } from "node:fs/promises";
-import { join } from "node:path";
-import {
-  listConversationFiles,
-  mostRecentConversationId,
-  projectsDirFor,
-  readFirstUserMessage,
-} from "./claudeProjects.ts";
+import { mostRecentConversationId } from "./claudeProjects.ts";
+import { ConversationLogWatcher } from "./convLog.ts";
 import { detectPrompt } from "./prompts.ts";
 import type { CreateMode, ServerMessage, SessionInfo } from "./types.ts";
+
+export { waitForFileSizeStable, type WaitForFileSizeStableOptions } from "./convLog.ts";
 
 /** Optional sink for "Claude appears to be waiting for input" events. */
 export interface PromptNotifier {
@@ -45,30 +41,18 @@ interface Session {
   ringBuffer: Buffer;
   viewers: Map<ViewerSink, ViewerDims>;
   ended: boolean;
-  /** Conversation log files that existed before this session spawned (for "new" mode attribution). */
-  preexistingConvFiles: Set<string>;
-  conversationId?: string;
-  title?: string;
   promptIdleTimer: ReturnType<typeof setTimeout> | null;
   lastPromptNotifyAt: number;
-  /** Last-observed conversation JSONL size that matched our PTY's view. */
-  knownConvLogSize: number;
-  /** Time when our PTY last emitted data — used to attribute log growth. */
-  lastPtyDataAt: number;
-  /** Pending settle timer that records the JSONL size after PTY output flushes. */
-  convSizeSettleTimer: ReturnType<typeof setTimeout> | null;
-  externallyUpdated: boolean;
 }
-
-const TITLE_REFRESH_MS = 3000;
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
   private listeners = new Set<ViewerSink>();
   private command: string;
   private idleTimer: ReturnType<typeof setInterval> | null = null;
-  private titleTimer: ReturnType<typeof setInterval> | null = null;
   private notifier: PromptNotifier | null = null;
+  private convWatcher = new ConversationLogWatcher();
+  private convWatcherUnsub: () => void;
 
   constructor(opts: { command: string; idleTimeoutMs?: number; notifier?: PromptNotifier }) {
     this.command = opts.command;
@@ -88,9 +72,7 @@ export class SessionManager {
         }
       }, 60_000);
     }
-    this.titleTimer = setInterval(() => {
-      void this.refreshTitles();
-    }, TITLE_REFRESH_MS);
+    this.convWatcherUnsub = this.convWatcher.onChange(() => this.broadcastSessions());
   }
 
   close() {
@@ -98,20 +80,14 @@ export class SessionManager {
       clearInterval(this.idleTimer);
       this.idleTimer = null;
     }
-    if (this.titleTimer) {
-      clearInterval(this.titleTimer);
-      this.titleTimer = null;
-    }
     for (const s of this.sessions.values()) {
       if (s.promptIdleTimer) {
         clearTimeout(s.promptIdleTimer);
         s.promptIdleTimer = null;
       }
-      if (s.convSizeSettleTimer) {
-        clearTimeout(s.convSizeSettleTimer);
-        s.convSizeSettleTimer = null;
-      }
     }
+    this.convWatcherUnsub();
+    this.convWatcher.close();
   }
 
   setNotifier(notifier: PromptNotifier | null) {
@@ -130,85 +106,14 @@ export class SessionManager {
       const result = detectPrompt(tail.toString("utf8"));
       if (!result.matched) return;
       s.lastPromptNotifyAt = now;
+      const conv = this.convWatcher.getState(s.id);
       this.notifier?.onPrompt({
         sessionId: s.id,
         cwdLabel: s.cwdLabel,
-        title: s.title,
+        title: conv?.title,
         preview: result.preview ?? "Claude is waiting for input",
       });
     }, PROMPT_IDLE_MS);
-  }
-
-  /** Resolve conversationId + title for any session missing them, and check for
-   *  external writes to the conversation log. Broadcasts on change. */
-  private async refreshTitles() {
-    let changed = false;
-    for (const s of this.sessions.values()) {
-      if (!s.conversationId) {
-        const files = await listConversationFiles(s.cwd);
-        const fresh = files.find((f) => !s.preexistingConvFiles.has(f));
-        if (fresh) {
-          s.conversationId = fresh.replace(/\.jsonl$/, "");
-        }
-      }
-      if (!s.conversationId) continue;
-      if (!s.title) {
-        const title = await readFirstUserMessage(s.cwd, s.conversationId);
-        if (title) {
-          s.title = title;
-          changed = true;
-        }
-      }
-      if (await this.checkExternalGrowth(s)) changed = true;
-    }
-    if (changed) this.broadcastSessions();
-  }
-
-  /**
-   * Compare the conversation JSONL size on disk vs the size we recorded after
-   * our PTY last emitted output. Growth that arrives while our PTY has been
-   * quiet for QUIET_MS is treated as an external `claude` process appending to
-   * the same conversation — the user's terminal here can't show those changes
-   * without a restart.
-   */
-  private async checkExternalGrowth(s: Session): Promise<boolean> {
-    if (!s.conversationId) return false;
-    const QUIET_MS = 2500;
-    const size = await readConvLogSize(s.cwd, s.conversationId);
-    if (s.knownConvLogSize === 0) {
-      s.knownConvLogSize = size;
-      return false;
-    }
-    // If our PTY just emitted output, growth is almost certainly our own; the
-    // settle-timer will update knownConvLogSize shortly. Skip this round.
-    if (Date.now() - s.lastPtyDataAt < QUIET_MS) return false;
-    if (size <= s.knownConvLogSize) {
-      // The log shrunk or rotated — treat as a fresh baseline.
-      if (size !== s.knownConvLogSize) s.knownConvLogSize = size;
-      return false;
-    }
-    if (!s.externallyUpdated) {
-      s.externallyUpdated = true;
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Debounce a JSONL-size snapshot after PTY output stops, so growth that
-   * actually came from this PTY doesn't get attributed to an external writer.
-   */
-  private scheduleConvSizeSnapshot(s: Session) {
-    if (!s.conversationId) return;
-    if (s.convSizeSettleTimer) clearTimeout(s.convSizeSettleTimer);
-    s.convSizeSettleTimer = setTimeout(() => {
-      s.convSizeSettleTimer = null;
-      if (s.ended || !s.conversationId) return;
-      void readConvLogSize(s.cwd, s.conversationId).then((size) => {
-        if (s.ended) return;
-        if (size > s.knownConvLogSize) s.knownConvLogSize = size;
-      });
-    }, 1500);
   }
 
   /** Subscribe to session-list updates. Returns an unsubscribe fn. */
@@ -223,6 +128,7 @@ export class SessionManager {
   }
 
   private toInfo(s: Session): SessionInfo {
+    const conv = this.convWatcher.getState(s.id);
     return {
       id: s.id,
       cwd: s.cwd,
@@ -231,9 +137,9 @@ export class SessionManager {
       cols: s.cols,
       rows: s.rows,
       viewers: s.viewers.size,
-      title: s.title,
-      conversationId: s.conversationId,
-      externallyUpdated: s.externallyUpdated || undefined,
+      title: conv?.title,
+      conversationId: conv?.conversationId,
+      externallyUpdated: conv?.externallyUpdated || undefined,
     };
   }
 
@@ -271,27 +177,28 @@ export class SessionManager {
           ? ["--resume", mode.conversationId]
           : [];
 
-    // Snapshot existing conversation files so a new one created by this PTY
-    // can be attributed back to this session in refreshTitles().
-    const preexistingConvFiles = new Set(await listConversationFiles(cwd));
+    // Snapshot existing conversation files BEFORE spawn so a new one created
+    // by this PTY can be attributed back to this session.
+    const preexistingFiles = await this.convWatcher.snapshotPreexisting(cwd);
 
     // For continue/resume we already know which conversation will be appended to.
     const knownConvId =
       mode.kind === "resume"
         ? mode.conversationId
         : mode.kind === "continue"
-          ? await mostRecentConversationId(cwd)
+          ? ((await mostRecentConversationId(cwd)) ?? undefined)
           : undefined;
 
     // If a live session already owns this conversation, hand that one back
     // instead of spawning a second PTY against the same JSONL.
     if (knownConvId) {
-      for (const existing of this.sessions.values()) {
-        if (!existing.ended && existing.conversationId === knownConvId) {
-          return this.toInfo(existing);
-        }
+      const existingId = this.convWatcher.findByConversationId(knownConvId);
+      if (existingId) {
+        const existing = this.sessions.get(existingId);
+        if (existing && !existing.ended) return this.toInfo(existing);
       }
     }
+
     const ptyProc = spawn(this.command, args, {
       name: "xterm-256color",
       cols: Math.max(20, cols | 0),
@@ -312,44 +219,20 @@ export class SessionManager {
       ringBuffer: Buffer.alloc(0),
       viewers: new Map(),
       ended: false,
-      preexistingConvFiles,
-      conversationId: knownConvId ?? undefined,
       promptIdleTimer: null,
       lastPromptNotifyAt: 0,
-      knownConvLogSize: 0,
-      lastPtyDataAt: 0,
-      convSizeSettleTimer: null,
-      externallyUpdated: false,
     };
 
-    // Seed the known log size if we already know which conversation we're bound to.
-    if (knownConvId) {
-      void readConvLogSize(cwd, knownConvId).then((sz) => {
-        if (!session.ended && session.knownConvLogSize === 0) {
-          session.knownConvLogSize = sz;
-        }
-      });
-    }
-
-    // Resolve the title now if we already know the conversation id.
-    if (session.conversationId) {
-      void readFirstUserMessage(cwd, session.conversationId).then((title) => {
-        if (title && !session.title) {
-          session.title = title;
-          this.broadcastSessions();
-        }
-      });
-    }
+    this.convWatcher.track(id, cwd, { knownConvId, preexistingFiles });
 
     ptyProc.onData((data) => {
       const now = Date.now();
       session.lastActivityAt = now;
-      session.lastPtyDataAt = now;
       session.ringBuffer = appendRing(session.ringBuffer, data);
       const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers.keys()) v.send(msg);
       this.scheduleIdlePromptCheck(session);
-      this.scheduleConvSizeSnapshot(session);
+      this.convWatcher.notePtyOutput(id);
     });
 
     ptyProc.onExit(({ exitCode }) => {
@@ -358,13 +241,10 @@ export class SessionManager {
         clearTimeout(session.promptIdleTimer);
         session.promptIdleTimer = null;
       }
-      if (session.convSizeSettleTimer) {
-        clearTimeout(session.convSizeSettleTimer);
-        session.convSizeSettleTimer = null;
-      }
       const msg: ServerMessage = { type: "ended", sessionId: id, exitCode: exitCode ?? 0 };
       for (const v of session.viewers.keys()) v.send(msg);
       this.sessions.delete(id);
+      this.convWatcher.untrack(id);
       this.broadcastSessions();
     });
 
@@ -431,11 +311,12 @@ export class SessionManager {
    */
   async reload(sessionId: string, cols: number, rows: number): Promise<SessionInfo | null> {
     const s = this.sessions.get(sessionId);
-    if (!s || !s.conversationId) return null;
+    if (!s) return null;
+    const conv = this.convWatcher.getState(sessionId);
+    if (!conv?.conversationId) return null;
     const cwd = s.cwd;
-    const conversationId = s.conversationId;
+    const conversationId = conv.conversationId;
 
-    // Capture pty + ended-promise before issuing kill so we can wait it out.
     const exited = new Promise<void>((resolve) => {
       const prev = s.pty.onExit(() => {
         resolve();
@@ -454,17 +335,9 @@ export class SessionManager {
     }
     await Promise.race([exited, sleep(2000)]);
 
-    await this.waitForConvLogStable(cwd, conversationId);
+    await this.convWatcher.waitForStable(cwd, conversationId);
 
     return this.create(cwd, cols, rows, { kind: "resume", conversationId });
-  }
-
-  /**
-   * Poll the conversation JSONL until its size hasn't changed for STABLE_MS.
-   * Bounded by MAX_MS so a continuously-writing peer can't block forever.
-   */
-  private async waitForConvLogStable(cwd: string, conversationId: string): Promise<void> {
-    await waitForFileSizeStable(() => readConvLogSize(cwd, conversationId));
   }
 
   kill(sessionId: string) {
@@ -509,53 +382,9 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-export interface WaitForFileSizeStableOptions {
-  /** Required quiet window before declaring stable. */
-  stableMs?: number;
-  /** Sampling interval. */
-  pollMs?: number;
-  /** Hard ceiling; resolves regardless once exceeded. */
-  maxMs?: number;
-}
-
-/**
- * Poll `read()` until the returned size hasn't changed for `stableMs`, or
- * `maxMs` elapses. Exported so the stability heuristic can be tested without
- * spinning up a PTY.
- */
-export async function waitForFileSizeStable(
-  read: () => Promise<number>,
-  opts: WaitForFileSizeStableOptions = {}
-): Promise<void> {
-  const pollMs = opts.pollMs ?? 100;
-  const stableMs = opts.stableMs ?? 500;
-  const maxMs = opts.maxMs ?? 3000;
-  const start = Date.now();
-  let lastSize = await read();
-  let stableSince = Date.now();
-  while (Date.now() - start < maxMs) {
-    await sleep(pollMs);
-    const size = await read();
-    if (size === lastSize) {
-      if (Date.now() - stableSince >= stableMs) return;
-    } else {
-      lastSize = size;
-      stableSince = Date.now();
-    }
-  }
-}
-
-async function readConvLogSize(cwd: string, conversationId: string): Promise<number> {
-  try {
-    const s = await stat(join(projectsDirFor(cwd), `${conversationId}.jsonl`));
-    return s.size;
-  } catch {
-    return 0;
-  }
-}
-
 export function appendRing(buf: Buffer, chunk: string): Buffer {
-  const next = buf.length === 0 ? Buffer.from(chunk, "utf8") : Buffer.concat([buf, Buffer.from(chunk, "utf8")]);
+  const next =
+    buf.length === 0 ? Buffer.from(chunk, "utf8") : Buffer.concat([buf, Buffer.from(chunk, "utf8")]);
   if (next.length <= RING_BUFFER_BYTES + RING_SLACK_BYTES) return next;
   let offset = next.length - RING_BUFFER_BYTES;
   // Advance past UTF-8 continuation bytes (0x80–0xBF) to land on a character boundary
