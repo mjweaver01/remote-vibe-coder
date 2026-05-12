@@ -28,6 +28,10 @@ function nodeReq(env: unknown): IncomingMessage {
 export function createApiRoutes(ctx: ApiContext): Hono {
   const app = new Hono();
 
+  // Unauthenticated: the client uses this to discover whether a token is
+  // required (e.g. on first PWA launch where storage is isolated from Safari).
+  app.get("/config", (c) => c.json({ root: ctx.root, hasToken: !!ctx.token }));
+
   app.use("*", async (c, next) => {
     const provided = c.req.query("token") ?? readTokenCookie(c.req.header("cookie") ?? "");
     if (!tokensMatch(ctx.token, provided)) {
@@ -84,8 +88,6 @@ export function createApiRoutes(ctx: ApiContext): Hono {
       return c.json({ error: errMessage(err) }, 500);
     }
   });
-
-  app.get("/config", (c) => c.json({ root: ctx.root, hasToken: !!ctx.token }));
 
   app.get("/pairing-url", (c) => c.json({ url: buildPairingUrl(nodeReq(c.env), ctx) }));
 

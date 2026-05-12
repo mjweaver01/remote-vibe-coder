@@ -28,6 +28,7 @@ export {
   History,
   Inbox,
   Keyboard,
+  KeyRound,
   Loader2,
   Menu,
   Bell,

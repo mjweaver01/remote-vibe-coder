@@ -44,6 +44,29 @@ export function getToken(): string | null {
   return cached;
 }
 
+/**
+ * Persist a token from a pasted URL or raw value. Used by the sign-in screen
+ * when the PWA boots without a token (iOS standalone PWAs have an isolated
+ * storage partition from Safari tabs, so a previously-saved token isn't
+ * visible). Returns the extracted token, or null if nothing usable was found.
+ */
+export function setToken(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  let token = trimmed;
+  try {
+    const maybeUrl = new URL(trimmed, window.location.origin);
+    const fromUrl = maybeUrl.searchParams.get("token");
+    if (fromUrl) token = fromUrl;
+  } catch {}
+  if (!token) return null;
+  try {
+    localStorage.setItem(STORAGE_KEY, token);
+  } catch {}
+  cached = token;
+  return token;
+}
+
 /** Clear the persisted token without navigating. */
 export function clearToken(): void {
   try {

@@ -49,6 +49,9 @@ interface Session {
    *  edge from "responding" to "idle," not every time we observe the empty
    *  input box. */
   sawSubstantiveOutput: boolean;
+  /** Set true on the same edge that fires `onPrompt` (Claude has gone idle
+   *  waiting for input). Cleared when a viewer attaches or sends input. */
+  awaitingInput: boolean;
 }
 
 export class SessionManager {
@@ -162,6 +165,10 @@ export class SessionManager {
         title: conv?.title,
         preview: result.preview ?? "Claude is waiting for input",
       });
+      if (!s.awaitingInput) {
+        s.awaitingInput = true;
+        this.broadcastSessions();
+      }
     }, PROMPT_IDLE_MS);
   }
 
@@ -189,6 +196,7 @@ export class SessionManager {
       title: conv?.title,
       conversationId: conv?.conversationId,
       externallyUpdated: s.hasUnseenUpdate || undefined,
+      awaitingInput: s.awaitingInput || undefined,
     };
   }
 
@@ -271,6 +279,7 @@ export class SessionManager {
       promptIdleTimer: null,
       hasUnseenUpdate: false,
       sawSubstantiveOutput: false,
+      awaitingInput: false,
     };
 
     this.convWatcher.track(id, cwd, { knownConvId, preexistingFiles });
@@ -285,6 +294,13 @@ export class SessionManager {
       // a permission prompt. Arm the notify-on-next-idle flag.
       const stripped = data.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "").trim();
       if (stripped.length >= 80) session.sawSubstantiveOutput = true;
+      // If no one is watching, mark the session unread so the browser shows
+      // the orange dot continuously while Claude works — not just at the
+      // moment it goes idle waiting for input.
+      if (session.viewers.size === 0 && !session.awaitingInput && stripped.length > 0) {
+        session.awaitingInput = true;
+        this.broadcastSessions();
+      }
       this.scheduleIdlePromptCheck(session);
       this.convWatcher.notePtyOutput(id, data);
     });
@@ -320,6 +336,9 @@ export class SessionManager {
     // user to reload. The flag clears naturally when reload spawns a new
     // session (and this stale one ends).
     void this.convWatcher.markBaseline(sessionId);
+    // The viewer is now looking at the session — the "unread" state should
+    // clear so the active-sessions list doesn't show a stale orange dot.
+    s.awaitingInput = false;
     this.recomputePtySize(s);
     viewer.send({ type: "attached", sessionId, replay: s.ringBuffer.toString("utf8") });
     this.broadcastSessions();
@@ -351,6 +370,10 @@ export class SessionManager {
     if (s && !s.ended) {
       s.lastActivityAt = Date.now();
       s.pty.write(data);
+      if (s.awaitingInput) {
+        s.awaitingInput = false;
+        this.broadcastSessions();
+      }
     }
   }
 

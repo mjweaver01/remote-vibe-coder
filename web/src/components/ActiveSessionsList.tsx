@@ -33,8 +33,13 @@ export function ActiveSessionsList({ sessions, activeIds, showCwd = false, fallb
                 {title}
                 {activeIds.has(s.id) ? (
                   <span className="session-activity-dot" aria-label="Active" />
-                ) : null}
-                {s.externallyUpdated ? (
+                ) : s.awaitingInput ? (
+                  <span
+                    className="session-updated-dot"
+                    aria-label="Awaiting input"
+                    title="Claude is waiting for input"
+                  />
+                ) : s.externallyUpdated ? (
                   <span
                     className="session-updated-dot"
                     aria-label="Conversation updated"

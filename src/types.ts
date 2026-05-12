@@ -24,6 +24,12 @@ export interface SessionInfo {
    * terminal here can't show those changes until the session is reloaded.
    */
   externallyUpdated?: boolean;
+  /**
+   * True when Claude has gone idle waiting for user input (the same edge that
+   * fires a push notification). Cleared when any viewer attaches to the
+   * session or sends input. Drives the "unread" dot in active session lists.
+   */
+  awaitingInput?: boolean;
 }
 
 export type CreateMode =

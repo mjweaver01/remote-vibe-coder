@@ -1,4 +1,5 @@
 import { Outlet } from "react-router";
+import { AuthGate } from "./components/AuthGate.tsx";
 import { ConnectionBanner } from "./components/ConnectionBanner.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { ToastViewport } from "./components/ToastViewport.tsx";
@@ -12,7 +13,9 @@ export function App() {
         <div className="app-shell">
           <ConnectionBanner />
           <ErrorBoundary>
-            <Outlet />
+            <AuthGate>
+              <Outlet />
+            </AuthGate>
           </ErrorBoundary>
           <ToastViewport />
         </div>
