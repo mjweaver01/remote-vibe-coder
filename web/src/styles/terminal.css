@@ -43,6 +43,33 @@
 }
 
 
+/* ----- Scroll-to-bottom floating button ----- */
+.term-scroll-bottom {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-ring-strong);
+  background: var(--replay-banner-bg);
+  color: var(--accent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: var(--shadow-banner);
+  cursor: pointer;
+  z-index: var(--z-banner);
+}
+.term-scroll-bottom:hover {
+  background: var(--accent-soft);
+}
+.term-scroll-bottom:active {
+  transform: translateY(1px);
+}
+
 /* ----- Replay banner (shown briefly when joining an in-flight session) ----- */
 .term-replay-banner {
   position: absolute;

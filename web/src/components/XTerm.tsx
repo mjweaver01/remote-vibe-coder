@@ -8,16 +8,18 @@ export interface XTermHandle {
   fit(): { cols: number; rows: number } | null;
   write(data: string): void;
   writeln(data: string): void;
+  scrollToBottom(): void;
 }
 
 interface Props {
   initialReplay?: string;
   onData(data: string): void;
   onResize(cols: number, rows: number): void;
+  onScrollAwayChange?(awayFromBottom: boolean): void;
 }
 
 export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
-  { initialReplay, onData, onResize },
+  { initialReplay, onData, onResize, onScrollAwayChange },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -26,11 +28,13 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
   const lastSizeRef = useRef<{ cols: number; rows: number }>({ cols: 0, rows: 0 });
   const onDataRef = useRef(onData);
   const onResizeRef = useRef(onResize);
+  const onScrollAwayRef = useRef(onScrollAwayChange);
 
   useEffect(() => {
     onDataRef.current = onData;
     onResizeRef.current = onResize;
-  }, [onData, onResize]);
+    onScrollAwayRef.current = onScrollAwayChange;
+  }, [onData, onResize, onScrollAwayChange]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -58,6 +62,20 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
     if (initialReplay) term.write(initialReplay);
 
     const dataDispose = term.onData((d) => onDataRef.current(d));
+
+    let lastAway = false;
+    const checkAway = () => {
+      const buf = term.buffer.active;
+      const away = buf.viewportY < buf.baseY;
+      if (away !== lastAway) {
+        lastAway = away;
+        onScrollAwayRef.current?.(away);
+      }
+    };
+    const scrollDispose = term.onScroll(checkAway);
+    // onScroll fires on user scroll but not when new output advances baseY
+    // while viewportY stays put. Poll covers that case cheaply.
+    const awayPoll = window.setInterval(checkAway, 300);
 
     const fitNow = () => {
       try {
@@ -178,7 +196,9 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
       container.removeEventListener("touchmove", onTouchMove, { capture: true });
       container.removeEventListener("touchend", onTouchEnd, { capture: true });
       container.removeEventListener("touchcancel", cancelMomentum, { capture: true });
+      clearInterval(awayPoll);
       dataDispose.dispose();
+      scrollDispose.dispose();
       term.dispose();
       termRef.current = null;
       fitRef.current = null;
@@ -199,6 +219,7 @@ export const XTerm = forwardRef<XTermHandle, Props>(function XTerm(
     },
     write: (data) => termRef.current?.write(data),
     writeln: (data) => termRef.current?.writeln(data),
+    scrollToBottom: () => termRef.current?.scrollToBottom(),
   }));
 
   return <div ref={containerRef} className="xterm-host" />;

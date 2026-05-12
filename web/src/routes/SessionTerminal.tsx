@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useOutletContext, useParams } from "react-router";
+import { ArrowDown } from "../components/icons.ts";
 import { Keybar } from "../components/Keybar.tsx";
 import { VoiceButton } from "../components/VoiceButton.tsx";
 import { XTerm, type XTermHandle } from "../components/XTerm.tsx";
@@ -19,6 +20,7 @@ export function SessionTerminal() {
   const toast = useToast();
 
   const [replayBanner, setReplayBanner] = useState(false);
+  const [scrolledAway, setScrolledAway] = useState(false);
   const termRef = useRef<XTermHandle | null>(null);
   const kbdTrapRef = useRef<HTMLInputElement | null>(null);
   const joinedRef = useRef(false);
@@ -120,12 +122,28 @@ export function SessionTerminal() {
           window.addEventListener("pointercancel", up, { once: true });
         }}
       >
-        <XTerm ref={termRef} onData={handleData} onResize={handleResize} />
+        <XTerm
+          ref={termRef}
+          onData={handleData}
+          onResize={handleResize}
+          onScrollAwayChange={setScrolledAway}
+        />
         {replayBanner && (
           <div className="term-replay-banner" role="status" aria-live="polite">
             <span className="term-replay-dot" aria-hidden="true" />
             Joined session — replay loaded
           </div>
+        )}
+        {scrolledAway && (
+          <button
+            type="button"
+            className="term-scroll-bottom"
+            onClick={() => termRef.current?.scrollToBottom()}
+            aria-label="Scroll to bottom"
+            title="Scroll to bottom"
+          >
+            <ArrowDown size={16} aria-hidden="true" />
+          </button>
         )}
       </div>
       <Keybar
