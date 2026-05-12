@@ -13,17 +13,24 @@ export class ApiError extends Error {
   }
 }
 
+async function readErrorDetail(res: Response): Promise<string> {
+  const text = await res.text().catch(() => "");
+  if (!text) return `HTTP ${res.status}`;
+  try {
+    const body = JSON.parse(text);
+    if (body && typeof body === "object" && typeof body.error === "string" && body.error) {
+      return body.error;
+    }
+    return `HTTP ${res.status}`;
+  } catch {
+    return text;
+  }
+}
+
 async function json<T>(path: string, signal?: AbortSignal): Promise<T> {
   const res = await fetch(withToken(path), { signal });
   if (!res.ok) {
-    let detail = "";
-    try {
-      const body = await res.json();
-      detail = body?.error ?? "";
-    } catch {
-      detail = await res.text().catch(() => "");
-    }
-    throw new ApiError(res.status, detail || `HTTP ${res.status}`);
+    throw new ApiError(res.status, await readErrorDetail(res));
   }
   return (await res.json()) as T;
 }
@@ -145,14 +152,7 @@ async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promi
     signal,
   });
   if (!res.ok) {
-    let detail = "";
-    try {
-      const b = await res.json();
-      detail = b?.error ?? "";
-    } catch {
-      detail = await res.text().catch(() => "");
-    }
-    throw new ApiError(res.status, detail || `HTTP ${res.status}`);
+    throw new ApiError(res.status, await readErrorDetail(res));
   }
   return (await res.json()) as T;
 }
