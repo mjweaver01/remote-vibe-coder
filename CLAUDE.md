@@ -405,6 +405,20 @@ The total CSS is ~1300 lines. Tailwind's overhead (PostCSS, JIT, purge config) i
 
 ---
 
+## Releases
+
+Cut a new release with the `/release` slash command (defined in [.claude/commands/release.md](.claude/commands/release.md)). The short version:
+
+1. `git status` must be clean; `gh release view <latest-tag>` for tone reference.
+2. Bump `package.json` **and** `package-lock.json` (both `version` fields). Don't run `npm install` to refresh the lockfile.
+3. Commit as `Release v<X.Y.Z>` (no `Co-Authored-By` trailer), tag `v<X.Y.Z>`, push branch + tag.
+4. Write notes in the v0.1.0 / v0.2.0 style: one framing sentence, 4–8 bold-lead bullets ("**Feature** — what the user can now do"), then the `npx remote-vibe-coder --root ~/Websites` install block verbatim.
+5. `gh release create v<X.Y.Z> --title v<X.Y.Z> --notes "$(cat <<'EOF' … EOF)"` — always a heredoc.
+
+Never run `npm publish` from the agent; the user triggers that separately.
+
+---
+
 ## What Is Out of Scope (for now)
 
 Do not add these without explicit discussion:
