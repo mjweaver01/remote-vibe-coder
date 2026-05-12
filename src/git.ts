@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { resolve, sep } from "node:path";
-import { stat } from "node:fs/promises";
 import { promisify } from "node:util";
+import { findGitRoot } from "./code.ts";
 
 const execFileP = promisify(execFile);
 
@@ -26,16 +26,6 @@ export interface GitStatusResult {
   staged: GitFileStatus[];
   unstaged: GitFileStatus[];
   untracked: GitFileStatus[];
-}
-
-async function findGitRoot(cwd: string): Promise<string | null> {
-  try {
-    const dir = (await stat(cwd)).isDirectory() ? cwd : resolve(cwd, "..");
-    const { stdout } = await execFileP("git", ["rev-parse", "--show-toplevel"], { cwd: dir });
-    return stdout.trim() || null;
-  } catch {
-    return null;
-  }
 }
 
 async function getCurrentBranch(root: string): Promise<string | null> {

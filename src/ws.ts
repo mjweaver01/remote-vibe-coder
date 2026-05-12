@@ -75,17 +75,16 @@ async function dispatch(msg: ClientMessage, sink: ViewerSink, sessions: SessionM
       return;
     case "create": {
       const info = await sessions.create(msg.cwd, msg.cols, msg.rows, msg.mode);
-      sessions.attach(info.id, sink);
+      sessions.attach(info.id, sink, msg.cols, msg.rows);
       sink.send({ type: "created", session: info });
       return;
     }
     case "join": {
-      const info = sessions.attach(msg.sessionId, sink);
+      const info = sessions.attach(msg.sessionId, sink, msg.cols, msg.rows);
       if (!info) {
         sink.send({ type: "error", message: `session ${msg.sessionId} not found` });
         return;
       }
-      sessions.resize(msg.sessionId, msg.cols, msg.rows);
       return;
     }
     case "detach":
@@ -95,7 +94,7 @@ async function dispatch(msg: ClientMessage, sink: ViewerSink, sessions: SessionM
       sessions.input(msg.sessionId, msg.data);
       return;
     case "resize":
-      sessions.resize(msg.sessionId, msg.cols, msg.rows);
+      sessions.resize(msg.sessionId, sink, msg.cols, msg.rows);
       return;
     case "kill":
       sessions.kill(msg.sessionId);

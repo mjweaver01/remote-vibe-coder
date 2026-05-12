@@ -97,10 +97,16 @@ export async function readFileSafe(
   const s = await stat(file);
   if (!s.isFile()) throw new Error("not a file");
 
-  const buf = Buffer.alloc(Math.min(s.size, MAX_FILE_BYTES));
+  const cap = Math.min(s.size, MAX_FILE_BYTES);
+  const buf = Buffer.alloc(cap);
   const fh = await import("node:fs/promises").then((m) => m.open(file, "r"));
   try {
-    await fh.read(buf, 0, buf.length, 0);
+    let filled = 0;
+    while (filled < cap) {
+      const { bytesRead } = await fh.read(buf, filled, cap - filled, filled);
+      if (bytesRead === 0) break;
+      filled += bytesRead;
+    }
   } finally {
     await fh.close();
   }
@@ -119,10 +125,21 @@ export async function readFileSafe(
 }
 
 function looksBinary(buf: Buffer): boolean {
-  // Quick heuristic: NUL byte in first 1KB
-  const limit = Math.min(buf.length, 1024);
-  for (let i = 0; i < limit; i++) if (buf[i] === 0) return true;
-  return false;
+  // UTF-16 text has NUL in every other byte; detect that first and treat as text.
+  const limit = Math.min(buf.length, 8192);
+  if (limit >= 2) {
+    if (buf[0] === 0xff && buf[1] === 0xfe) return false; // UTF-16 LE BOM
+    if (buf[0] === 0xfe && buf[1] === 0xff) return false; // UTF-16 BE BOM
+  }
+  // Otherwise, classify on the fraction of non-printable, non-NUL control bytes.
+  let suspicious = 0;
+  for (let i = 0; i < limit; i++) {
+    const b = buf[i]!;
+    if (b === 0) return true;
+    // Allow common whitespace controls; flag the rest of C0.
+    if (b < 0x09 || (b > 0x0d && b < 0x20)) suspicious++;
+  }
+  return limit > 0 && suspicious / limit > 0.3;
 }
 
 export async function gitDiff(
@@ -179,7 +196,7 @@ export async function gitDiff(
   return { path: file, original, modified, staged: false, inGit: true, isUntracked };
 }
 
-async function findGitRoot(start: string): Promise<string | null> {
+export async function findGitRoot(start: string): Promise<string | null> {
   try {
     const { stdout } = await execFileP("git", ["rev-parse", "--show-toplevel"], {
       cwd: (await stat(start)).isDirectory() ? start : resolve(start, ".."),

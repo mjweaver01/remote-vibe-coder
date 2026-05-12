@@ -9,9 +9,15 @@ import {
 import type { CreateMode, ServerMessage, SessionInfo } from "./types.ts";
 
 export const RING_BUFFER_BYTES = 64 * 1024;
+const RING_SLACK_BYTES = RING_BUFFER_BYTES / 2;
 
 export interface ViewerSink {
   send(msg: ServerMessage): void;
+}
+
+interface ViewerDims {
+  cols: number;
+  rows: number;
 }
 
 interface Session {
@@ -23,8 +29,8 @@ interface Session {
   cols: number;
   rows: number;
   pty: IPty;
-  ringBuffer: string;
-  viewers: Set<ViewerSink>;
+  ringBuffer: Buffer;
+  viewers: Map<ViewerSink, ViewerDims>;
   ended: boolean;
   /** Conversation log files that existed before this session spawned (for "new" mode attribution). */
   preexistingConvFiles: Set<string>;
@@ -124,6 +130,25 @@ export class SessionManager {
     for (const l of this.listeners) l.send(msg);
   }
 
+  private recomputePtySize(s: Session): void {
+    if (s.ended || s.viewers.size === 0) return;
+    let c = Infinity;
+    let r = Infinity;
+    for (const dims of s.viewers.values()) {
+      if (dims.cols < c) c = dims.cols;
+      if (dims.rows < r) r = dims.rows;
+    }
+    if (!Number.isFinite(c) || !Number.isFinite(r)) return;
+    if (s.cols === c && s.rows === r) return;
+    s.cols = c;
+    s.rows = r;
+    try {
+      s.pty.resize(c, r);
+    } catch {
+      // PTY may have just died
+    }
+  }
+
   async create(
     cwd: string,
     cols: number,
@@ -177,8 +202,8 @@ export class SessionManager {
       cols: cols | 0,
       rows: rows | 0,
       pty: ptyProc,
-      ringBuffer: "",
-      viewers: new Set(),
+      ringBuffer: Buffer.alloc(0),
+      viewers: new Map(),
       ended: false,
       preexistingConvFiles,
       conversationId: knownConvId ?? undefined,
@@ -198,13 +223,13 @@ export class SessionManager {
       session.lastActivityAt = Date.now();
       session.ringBuffer = appendRing(session.ringBuffer, data);
       const msg: ServerMessage = { type: "output", sessionId: id, data };
-      for (const v of session.viewers) v.send(msg);
+      for (const v of session.viewers.keys()) v.send(msg);
     });
 
     ptyProc.onExit(({ exitCode }) => {
       session.ended = true;
       const msg: ServerMessage = { type: "ended", sessionId: id, exitCode: exitCode ?? 0 };
-      for (const v of session.viewers) v.send(msg);
+      for (const v of session.viewers.keys()) v.send(msg);
       this.sessions.delete(id);
       this.broadcastSessions();
     });
@@ -214,11 +239,16 @@ export class SessionManager {
     return this.toInfo(session);
   }
 
-  attach(sessionId: string, viewer: ViewerSink): SessionInfo | null {
+  attach(sessionId: string, viewer: ViewerSink, cols?: number, rows?: number): SessionInfo | null {
     const s = this.sessions.get(sessionId);
     if (!s) return null;
-    s.viewers.add(viewer);
-    viewer.send({ type: "attached", sessionId, replay: s.ringBuffer });
+    const dims: ViewerDims = {
+      cols: cols !== undefined ? Math.max(20, cols | 0) : s.cols,
+      rows: rows !== undefined ? Math.max(5, rows | 0) : s.rows,
+    };
+    s.viewers.set(viewer, dims);
+    this.recomputePtySize(s);
+    viewer.send({ type: "attached", sessionId, replay: s.ringBuffer.toString("utf8") });
     this.broadcastSessions();
     return this.toInfo(s);
   }
@@ -227,6 +257,7 @@ export class SessionManager {
     const s = this.sessions.get(sessionId);
     if (!s) return;
     if (s.viewers.delete(viewer)) {
+      this.recomputePtySize(s);
       this.broadcastSessions();
     }
   }
@@ -234,7 +265,10 @@ export class SessionManager {
   detachEverywhere(viewer: ViewerSink) {
     let changed = false;
     for (const s of this.sessions.values()) {
-      if (s.viewers.delete(viewer)) changed = true;
+      if (s.viewers.delete(viewer)) {
+        this.recomputePtySize(s);
+        changed = true;
+      }
     }
     if (changed) this.broadcastSessions();
   }
@@ -247,20 +281,16 @@ export class SessionManager {
     }
   }
 
-  resize(sessionId: string, cols: number, rows: number) {
+  resize(sessionId: string, viewer: ViewerSink, cols: number, rows: number) {
     const s = this.sessions.get(sessionId);
     if (!s || s.ended) return;
-    const c = Math.max(20, cols | 0);
-    const r = Math.max(5, rows | 0);
-    if (s.cols === c && s.rows === r) return;
-    s.cols = c;
-    s.rows = r;
-    try {
-      s.pty.resize(c, r);
-    } catch {
-      // PTY may have just died
-    }
-    this.broadcastSessions();
+    const dims = s.viewers.get(viewer);
+    if (!dims) return;
+    dims.cols = Math.max(20, cols | 0);
+    dims.rows = Math.max(5, rows | 0);
+    const before = `${s.cols}x${s.rows}`;
+    this.recomputePtySize(s);
+    if (`${s.cols}x${s.rows}` !== before) this.broadcastSessions();
   }
 
   kill(sessionId: string) {
@@ -288,13 +318,11 @@ function labelFor(cwd: string): string {
   return basename(cwd) || cwd;
 }
 
-export function appendRing(buf: string, chunk: string): string {
-  const next = buf + chunk;
-  const bytes = Buffer.byteLength(next, "utf8");
-  if (bytes <= RING_BUFFER_BYTES) return next;
-  const raw = Buffer.from(next, "utf8");
-  let offset = bytes - RING_BUFFER_BYTES;
+export function appendRing(buf: Buffer, chunk: string): Buffer {
+  const next = buf.length === 0 ? Buffer.from(chunk, "utf8") : Buffer.concat([buf, Buffer.from(chunk, "utf8")]);
+  if (next.length <= RING_BUFFER_BYTES + RING_SLACK_BYTES) return next;
+  let offset = next.length - RING_BUFFER_BYTES;
   // Advance past UTF-8 continuation bytes (0x80–0xBF) to land on a character boundary
-  while (offset < raw.length && (raw[offset]! & 0xc0) === 0x80) offset++;
-  return raw.subarray(offset).toString("utf8");
+  while (offset < next.length && (next[offset]! & 0xc0) === 0x80) offset++;
+  return Buffer.from(next.subarray(offset));
 }

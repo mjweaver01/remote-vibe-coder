@@ -30,7 +30,7 @@ Distributed as an npm package: `npx remote-vibe-coder --root ~/Websites`.
 
 **Runtime:** Node 25+.
 
-The server is built on **Hono** running on `@hono/node-server`. Composition lives in `src/server.ts`; all `/api/*` routes are registered against a sub-app in `src/routes/api.ts` and mounted via `app.route("/api", …)`. The WebSocket upgrade lives in `src/ws.ts` and attaches to the underlying `http.Server` returned by `serve()`, sharing the port with HTTP.
+The server is built on **Hono** running on `@hono/node-server`. Composition lives in `src/server.ts`; all `/api/*` routes are registered against a sub-app in `src/api.ts` and mounted via `app.route("/api", …)`. The WebSocket upgrade lives in `src/ws.ts` and attaches to the underlying `http.Server` returned by `serve()`, sharing the port with HTTP.
 
 Static assets are served from `dist/web/` via `@hono/node-server`'s `serveStatic`. Unknown paths fall through to `app.notFound`, which returns `index.html` so React Router can take over. The API sub-app has its own `app.all("*", → 404 JSON)` catch-all so mistyped `/api/*` paths return JSON, **not** the SPA fallback.
 
@@ -70,14 +70,15 @@ remote-vibe-coder/
 │   ├── cli.ts                  # Entry point: flag parsing, QR banner, SIGINT handler
 │   ├── server.ts               # Hono composition: mounts /api, static, SPA fallback, WS
 │   ├── ws.ts                   # WebSocket upgrade + per-viewer message dispatch
-│   ├── routes/
-│   │   └── api.ts              # All /api/* routes (Hono sub-app, auth middleware, 404 catch)
+│   ├── api.ts                  # All /api/* routes (Hono sub-app, auth middleware, 404 catch)
 │   ├── sessions.ts             # PTY lifecycle: create/attach/detach/resize/kill
 │   ├── files.ts                # Sandboxed folder listing (/api/folders)
-│   ├── code.ts                 # File read, git diff, tree listing (/api/file, /api/diff, /api/tree)
+│   ├── code.ts                 # File read, git diff, tree listing, shared findGitRoot
 │   ├── git.ts                  # Git status/stage/unstage/commit (/api/git/*)
 │   ├── history.ts              # Past Claude conversations from ~/.claude/projects/
+│   ├── claudeProjects.ts       # Reads ~/.claude/projects/ JSONL — conv-id + first-message lookup
 │   ├── auth.ts                 # Token generation + constant-time compare
+│   ├── certs.ts                # Self-signed cert helper for HTTPS mode
 │   ├── types.ts                # WebSocket protocol types (shared with web/)
 │   ├── build.ts                # esbuild: bundles server → dist/cli.js
 │   └── dev.ts                  # Dev runner: vite dev + tsx watch, colour-tagged output
@@ -216,8 +217,9 @@ All messages are JSON. The protocol types live in `src/types.ts` and are importe
 ## PTY Session Model
 
 - PTY lifetime is **independent of WebSocket connections**. Closing a browser tab does not kill Claude.
-- **Multiple viewers** can attach to the same `sessionId`. Both see identical output in real time and both can send input.
-- **Ring buffer** — last 64 KB of PTY output is stored per session. Replayed verbatim to every new attacher via `attached.replay`. This is how a phone "sees" the current terminal state without the server re-running anything.
+- **Multiple viewers** can attach to the same `sessionId`. All see identical output in real time and all can send input.
+- **Resize is min-across-viewers.** Each attached viewer reports its own `cols`/`rows` (on `join` and any subsequent `resize`); the PTY is sized to the **smallest** dimensions across attached viewers, so a phone joining a laptop session doesn't shrink the laptop's render past what fits. Dimensions are recomputed on attach, detach, and resize.
+- **Ring buffer** — last 64 KB of PTY output is stored per session as a `Buffer`, trimmed when it exceeds cap + 32 KB slack (amortizes the trim cost). Replayed verbatim to every new attacher via `attached.replay`. This is how a phone "sees" the current terminal state without the server re-running anything.
 - Sessions are in-memory only. A server restart clears all sessions.
 
 ---
