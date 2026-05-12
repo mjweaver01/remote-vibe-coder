@@ -56,15 +56,7 @@ export function SessionPage() {
     const ctx = reloadCtxRef.current;
     if (!ctx) return;
     const off = ws.onMessage((m: ServerMessage) => {
-      if (m.type === "ended" && m.sessionId === sessionId) {
-        ws.send({
-          type: "create",
-          cwd: ctx.cwd,
-          cols: ctx.cols,
-          rows: ctx.rows,
-          mode: { kind: "resume", conversationId: ctx.conversationId },
-        });
-      } else if (
+      if (
         m.type === "created" &&
         m.session.cwd === ctx.cwd &&
         m.session.conversationId === ctx.conversationId
@@ -72,6 +64,9 @@ export function SessionPage() {
         reloadCtxRef.current = null;
         setReloading(false);
         navigate(`/s/${m.session.id}`, { replace: true });
+      } else if (m.type === "error") {
+        reloadCtxRef.current = null;
+        setReloading(false);
       }
     });
     return off;
@@ -87,7 +82,15 @@ export function SessionPage() {
       rows: session.rows || 24,
     };
     setReloading(true);
-    ws.send({ type: "kill", sessionId });
+    // Server handles kill + wait-for-stable-jsonl + resume atomically and
+    // replies with `created`. This avoids a race where claude --resume reads
+    // the JSONL before VS Code's claude has flushed its latest writes.
+    ws.send({
+      type: "reload",
+      sessionId,
+      cols: reloadCtxRef.current.cols,
+      rows: reloadCtxRef.current.rows,
+    });
   };
 
   const showExternalBanner = !!(session?.externallyUpdated && session.conversationId) || reloading;

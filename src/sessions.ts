@@ -423,6 +423,65 @@ export class SessionManager {
     if (`${s.cols}x${s.rows}` !== before) this.broadcastSessions();
   }
 
+  /**
+   * Kill the PTY for `sessionId`, wait for the conversation JSONL to stop
+   * growing (so another writer has time to flush), then spawn a fresh PTY
+   * with `--resume <conversationId>`. Returns the new session info, or null
+   * if the input session can't be reloaded (no conversationId, already gone).
+   */
+  async reload(sessionId: string, cols: number, rows: number): Promise<SessionInfo | null> {
+    const s = this.sessions.get(sessionId);
+    if (!s || !s.conversationId) return null;
+    const cwd = s.cwd;
+    const conversationId = s.conversationId;
+
+    // Capture pty + ended-promise before issuing kill so we can wait it out.
+    const exited = new Promise<void>((resolve) => {
+      const prev = s.pty.onExit(() => {
+        resolve();
+        try {
+          prev.dispose();
+        } catch {
+          // already disposed
+        }
+      });
+    });
+
+    try {
+      s.pty.kill();
+    } catch {
+      // already dead
+    }
+    await Promise.race([exited, sleep(2000)]);
+
+    await this.waitForConvLogStable(cwd, conversationId);
+
+    return this.create(cwd, cols, rows, { kind: "resume", conversationId });
+  }
+
+  /**
+   * Poll the conversation JSONL until its size hasn't changed for STABLE_MS.
+   * Bounded by MAX_MS so a continuously-writing peer can't block forever.
+   */
+  private async waitForConvLogStable(cwd: string, conversationId: string): Promise<void> {
+    const POLL_MS = 100;
+    const STABLE_MS = 500;
+    const MAX_MS = 3000;
+    const start = Date.now();
+    let lastSize = await readConvLogSize(cwd, conversationId);
+    let stableSince = Date.now();
+    while (Date.now() - start < MAX_MS) {
+      await sleep(POLL_MS);
+      const size = await readConvLogSize(cwd, conversationId);
+      if (size === lastSize) {
+        if (Date.now() - stableSince >= STABLE_MS) return;
+      } else {
+        lastSize = size;
+        stableSince = Date.now();
+      }
+    }
+  }
+
   kill(sessionId: string) {
     const s = this.sessions.get(sessionId);
     if (!s) return;
@@ -459,6 +518,10 @@ export function minViewerDims(viewers: Iterable<ViewerDims>): ViewerDims | null 
   }
   if (!any || !Number.isFinite(cols) || !Number.isFinite(rows)) return null;
   return { cols, rows };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 async function readConvLogSize(cwd: string, conversationId: string): Promise<number> {

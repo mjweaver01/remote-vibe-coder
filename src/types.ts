@@ -38,7 +38,14 @@ export type ClientMessage =
   | { type: "detach"; sessionId: string }
   | { type: "input"; sessionId: string; data: string }
   | { type: "resize"; sessionId: string; cols: number; rows: number }
-  | { type: "kill"; sessionId: string };
+  | { type: "kill"; sessionId: string }
+  /**
+   * Kill the current PTY for `sessionId` and immediately spawn a fresh one
+   * against the same conversation, but only after the JSONL has been stable
+   * for a short window. Used when another `claude` (e.g. VS Code's) has been
+   * appending to the same conversation and the user wants to sync the view.
+   */
+  | { type: "reload"; sessionId: string; cols: number; rows: number };
 
 export interface PastSessionInfo {
   id: string;

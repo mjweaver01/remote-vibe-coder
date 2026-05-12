@@ -111,5 +111,18 @@ async function dispatch(msg: ClientMessage, sink: ViewerSink, sessions: SessionM
     case "kill":
       sessions.kill(msg.sessionId);
       return;
+    case "reload": {
+      const info = await sessions.reload(msg.sessionId, msg.cols, msg.rows);
+      if (!info) {
+        sink.send({
+          type: "error",
+          message: `cannot reload session ${msg.sessionId} (no conversation bound)`,
+        });
+        return;
+      }
+      sessions.attach(info.id, sink, msg.cols, msg.rows);
+      sink.send({ type: "created", session: info });
+      return;
+    }
   }
 }
