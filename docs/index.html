@@ -67,7 +67,7 @@
         </div>
         <pre class="frame-body"><span class="muted">$ npx rvc --root ~/Websites</span>
 
-  <span class="accent">remote-vibe-coder</span> <span class="muted">v0.5.0</span>
+  <span class="accent">remote-vibe-coder</span> <span class="muted" id="version">v0.5.0</span>
 
   Local:   <span class="link">http://127.0.0.1:4310</span>
   LAN:     <span class="link">http://192.168.1.42:4310?token=•••</span>
@@ -271,6 +271,14 @@ node dist/cli.js --root ~/Websites</code></pre>
         if (!navigator.clipboard) return;
         navigator.clipboard.writeText(text).then(flash);
       }
+      fetch("https://registry.npmjs.org/remote-vibe-coder/latest")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data && data.version) {
+            document.getElementById("version").textContent = "v" + data.version;
+          }
+        })
+        .catch(() => {});
       document.querySelectorAll("[data-copy]").forEach((el) => {
         el.addEventListener("click", () => {
           const t = el.getAttribute("data-copy") || el.innerText.trim();
