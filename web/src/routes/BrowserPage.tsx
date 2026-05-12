@@ -13,6 +13,7 @@ import {
 import { ActiveSessionsList } from "../components/ActiveSessionsList.tsx";
 import { EmptyState } from "../components/EmptyState.tsx";
 import { LoadingState } from "../components/LoadingState.tsx";
+import { GithubLink } from "../components/GithubLink.tsx";
 import { NotificationsToggle } from "../components/NotificationsToggle.tsx";
 import { PairDeviceButton } from "../components/PairDevice.tsx";
 import { ThemeToggle } from "../components/ThemeToggle.tsx";
@@ -73,6 +74,7 @@ export function BrowserPage() {
           <>
             <NotificationsToggle />
             <ThemeToggle />
+            <GithubLink />
             <PairDeviceButton />
           </>
         }
