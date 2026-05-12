@@ -58,6 +58,7 @@ Static assets are served from `dist/web/` via `@hono/node-server`'s `serveStatic
 | Code editor    | Monaco (AMD loader via `min/vs/loader.js`)     | VSCode's editor; lazy-loaded on first Files tab open              |
 | Voice          | Web Speech API (`SpeechRecognition`)           | Native browser API; no model download, no external dependency     |
 | Formatting     | Prettier                                       | See `.prettierrc` — 2-space, double quotes, 100-char lines        |
+| Tests          | Vitest                                         | Single runner for both server (`src/`) and web (`web/src/`) suites |
 | Types          | TypeScript strict + `noUncheckedIndexedAccess` | Catches index-access bugs at compile time                         |
 
 ---
@@ -81,7 +82,8 @@ remote-vibe-coder/
 │   ├── certs.ts                # Self-signed cert helper for HTTPS mode
 │   ├── types.ts                # WebSocket protocol types (shared with web/)
 │   ├── build.ts                # esbuild: bundles server → dist/cli.js
-│   └── dev.ts                  # Dev runner: vite dev + tsx watch, colour-tagged output
+│   ├── dev.ts                  # Dev runner: vite dev + tsx watch, colour-tagged output
+│   └── *.test.ts               # Vitest suites colocated with the code they cover
 │
 ├── web/                        # React SPA (Vite project root)
 │   ├── index.html              # Single shell; script type=module → /assets/app.js
@@ -297,6 +299,22 @@ npx prettier --write .
 `.prettierrc`: `semi: true`, `singleQuote: false`, `tabWidth: 2`, `printWidth: 100`, `trailingComma: "es5"`.
 
 Prettier runs on all `.ts` / `.tsx` / `.css` / `.json` files. Do not fight it — if Prettier reformats something, accept it.
+
+### Tests
+
+```bash
+npm test          # vitest run (one-shot)
+npm run test:watch
+```
+
+Vitest is the single runner for both server and web suites. Test files live next to the code they cover as `*.test.ts` / `*.test.tsx`.
+
+Current suites:
+
+- **Server (`src/`):** `auth.test.ts`, `files.test.ts`, `git.test.ts`, `history.test.ts`, `sessions.test.ts`
+- **Web (`web/src/`):** `hooks/useAsync.test.tsx`, `lib/auth.test.ts`, `lib/monaco.test.ts`, `lib/ws.test.ts`
+
+Known gaps with no coverage yet: `src/api.ts`, `src/ws.ts`, `src/code.ts`, `src/claudeProjects.ts`, `src/prompts.ts`, `src/convLog.ts`, `src/push.ts`, `web/src/lib/api.ts`, `web/src/lib/favorites.ts`, `web/src/lib/push.ts`. When touching any of these, add a test alongside the change.
 
 ---
 
