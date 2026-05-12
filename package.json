@@ -1,6 +1,6 @@
 {
   "name": "remote-vibe-coder",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Run Claude Code remotely from your phone — browse a folder, open a PTY-backed Claude session, and answer prompts from any device on your LAN.",
   "type": "module",
   "bin": {
