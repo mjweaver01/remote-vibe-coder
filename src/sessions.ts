@@ -43,12 +43,11 @@ interface Session {
   ended: boolean;
   promptIdleTimer: ReturnType<typeof setTimeout> | null;
   hasUnseenUpdate: boolean;
-  /** Set to true when the local PTY emits substantive output (Claude is
-   *  responding or rendering a permission prompt). Cleared after the idle
-   *  prompt is detected and a push fires. Ensures we only notify on the
-   *  edge from "responding" to "idle," not every time we observe the empty
-   *  input box. */
-  sawSubstantiveOutput: boolean;
+  /** Last value returned by `detectPrompt`. We only fire `onPrompt` on the
+   *  edge from `false` → `true`, so re-running the detector on an already-idle
+   *  session doesn't re-notify. Reset to `false` on input/attach so the next
+   *  idle after the user engages is treated as a fresh "done" event. */
+  lastPromptMatched: boolean;
   /** Set true on the same edge that fires `onPrompt` (Claude has gone idle
    *  waiting for input). Cleared when a viewer attaches or sends input. */
   awaitingInput: boolean;
@@ -152,12 +151,13 @@ export class SessionManager {
           );
         }
       }
+      const wasMatched = s.lastPromptMatched;
+      s.lastPromptMatched = result.matched;
       if (!result.matched) return;
-      // Only fire on the edge from "responding" → "idle." If we haven't seen
-      // substantive output since the last notification (or since session
-      // start), the user is just looking at the empty input box.
-      if (!s.sawSubstantiveOutput) return;
-      s.sawSubstantiveOutput = false;
+      // Only fire on the edge from "not matched" → "matched." Re-running the
+      // detector on an already-idle session would otherwise re-notify each
+      // time the idle timer ticks (e.g. external conv growth, late output).
+      if (wasMatched) return;
       const conv = this.convWatcher.getState(s.id);
       this.notifier?.onPrompt({
         sessionId: s.id,
@@ -278,7 +278,7 @@ export class SessionManager {
       ended: false,
       promptIdleTimer: null,
       hasUnseenUpdate: false,
-      sawSubstantiveOutput: false,
+      lastPromptMatched: false,
       awaitingInput: false,
     };
 
@@ -290,13 +290,13 @@ export class SessionManager {
       session.ringBuffer = appendRing(session.ringBuffer, data);
       const msg: ServerMessage = { type: "output", sessionId: id, data };
       for (const v of session.viewers.keys()) v.send(msg);
-      // Substantive (non-cosmetic) output = Claude is producing a response or
-      // a permission prompt. Arm the notify-on-next-idle flag.
-      const stripped = data.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "").trim();
-      if (stripped.length >= 80) session.sawSubstantiveOutput = true;
+      // Any new output means Claude is mid-turn again — the next idle should
+      // be treated as a fresh "done" edge by `scheduleIdlePromptCheck`.
+      session.lastPromptMatched = false;
       // If no one is watching, mark the session unread so the browser shows
       // the orange dot continuously while Claude works — not just at the
       // moment it goes idle waiting for input.
+      const stripped = data.replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, "").trim();
       if (session.viewers.size === 0 && !session.awaitingInput && stripped.length > 0) {
         session.awaitingInput = true;
         this.broadcastSessions();
@@ -370,6 +370,7 @@ export class SessionManager {
     if (s && !s.ended) {
       s.lastActivityAt = Date.now();
       s.pty.write(data);
+      s.lastPromptMatched = false;
       if (s.awaitingInput) {
         s.awaitingInput = false;
         this.broadcastSessions();
