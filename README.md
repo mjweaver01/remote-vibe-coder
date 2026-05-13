@@ -30,7 +30,7 @@ On your LAN:
 npx rvc --root ~/Websites --host 0.0.0.0
 ```
 
-Over the internet, via an anonymous HTTPS tunnel (powered by [ducky.wtf](https://ducky.wtf)):
+Over the internet, via an anonymous HTTPS tunnel (powered by [ducky.wtf](https://www.ducky.wtf)):
 
 ```bash
 npx rvc --root ~/Websites --https
