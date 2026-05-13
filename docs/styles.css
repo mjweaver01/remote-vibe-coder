@@ -153,6 +153,23 @@ a:hover {
   text-decoration: none;
 }
 
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-link .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.btn .icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+}
+
 @media (max-width: 520px) {
   .topbar {
     padding: 12px 16px;
@@ -186,11 +203,15 @@ section + section {
 }
 
 /* ───── Hero ───── */
+.hero {
+  padding: 24px 0 8px;
+}
+
 .hero h1 {
   font-size: clamp(40px, 7vw, 64px);
-  line-height: 1.05;
+  line-height: 1.1;
   letter-spacing: -0.025em;
-  margin: 0 0 18px;
+  margin: 0 0 28px;
   font-weight: 700;
 }
 
@@ -201,17 +222,17 @@ section + section {
 .lede {
   font-size: clamp(16px, 2vw, 19px);
   color: var(--text-dim);
-  line-height: 1.55;
-  max-width: 640px;
-  margin: 0 0 28px;
+  line-height: 1.6;
+  max-width: 800px;
+  margin: 0 0 40px;
 }
 
 .cta {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 .install {
@@ -223,9 +244,12 @@ section + section {
   -webkit-backdrop-filter: blur(14px) saturate(140%);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  padding: 12px 14px 12px 16px;
+  box-sizing: border-box;
+  height: 46px;
+  padding: 0 14px 0 16px;
   font-family: var(--font-mono);
   font-size: 14.5px;
+  line-height: 1;
   color: var(--text);
   cursor: pointer;
   transition:
@@ -261,9 +285,12 @@ section + section {
 .btn {
   display: inline-flex;
   align-items: center;
-  padding: 12px 18px;
+  box-sizing: border-box;
+  height: 46px;
+  padding: 0 18px;
   border-radius: var(--radius-md);
   font-size: 14.5px;
+  line-height: 1;
   font-weight: 500;
   border: 1px solid var(--border-strong);
   background: var(--bg-2);
@@ -285,7 +312,7 @@ section + section {
 .micro {
   font-size: 13px;
   color: var(--text-dim);
-  margin: 8px 0 0;
+  margin: 16px 0 0;
 }
 
 /* ───── Terminal frame ───── */
